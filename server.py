@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.config['SECRET_KEY'] = 'whatsapp_secret_key_123'
 
-# تعديل السطر ده عشان يشتغل تلقائي بدون مشاكل async_mode على Railway
+# إعداد الـ SocketIO لـ Railway
 socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60)
 
 DATABASE = 'chat_app.db'
@@ -44,7 +44,7 @@ init_db()
 def index():
     return send_from_directory('.', 'index.html')
 
-# ================= مسارات الـ API =================
+# ================= مسارات الـ API (التسجيل والدخول والبحث) =================
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -83,7 +83,23 @@ def search_user():
         return jsonify({'status': 'success', 'user': {'username': user['username'], 'phone': user['phone']}})
     return jsonify({'status': 'error', 'message': 'المستخدم غير موجود'}), 404
 
-# مسار بديل ومضمون لإرسال الرسائل وحفظها فوراً في قاعدة البيانات
+# 🔑 المسار اللي كان ناقص ومسبب الـ 404 (جلب تاريخ الرسائل)
+@app.route('/api/messages', methods=['GET'])
+def get_messages():
+    sender = request.args.get('sender')
+    receiver = request.args.get('receiver')
+    
+    with get_db() as conn:
+        messages = conn.execute('''
+            SELECT sender_phone, receiver_phone, message, timestamp FROM messages 
+            WHERE (sender_phone = ? AND receiver_phone = ?) 
+               OR (sender_phone = ? AND receiver_phone = ?)
+            ORDER BY timestamp ASC
+        ''', (sender, receiver, receiver, sender)).fetchall()
+        
+    return jsonify([dict(msg) for msg in messages])
+
+# مسار بديل لإرسال وحفظ الرسائل فوراً
 @app.route('/api/send', methods=['POST'])
 def send_message_api():
     data = request.json
