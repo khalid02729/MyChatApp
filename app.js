@@ -1,90 +1,121 @@
-let currentSender = "";   
-let currentReceiver = ""; 
-let lastMessageCount = 0;
+const SERVER_URL = 'https://railway.app';
 
-function loginOrRegister() {
-    const name = document.getElementById("regName").value.trim();
-    const phone = document.getElementById("regPhone").value.trim();
+let currentUserPhone = '';
+let currentUserName = '';
+let activeChatReceiver = '';
+let chatInterval = null;
 
-    if (name === "" || phone === "") {
-        alert("من فضلك أدخل الاسم ورقم الهاتف أولاً!");
+// زر الدخول والتسجيل
+document.getElementById('login-btn').addEventListener('click', async () => {
+    const name = document.getElementById('login-name').value.trim();
+    const phone = document.getElementById('login-phone').value.trim();
+    const password = document.getElementById('login-pass').value.trim();
+
+    if (!phone || !password) {
+        alert('من فضلك اكتب رقم الموبايل وكلمة السر!');
         return;
     }
 
-    currentSender = phone;
-    document.getElementById("userDisplay").textContent = `${name} (${phone})`;
-    
-    document.getElementById("loginScreen").style.display = "none";
-    document.getElementById("chatScreen").style.display = "flex";
-}
+    const formData = new URLSearchParams();
+    formData.append('name', name);
+    formData.append('phone', phone);
+    formData.append('password', password);
 
-function sendMessage() {
-    const input = document.getElementById("messageInput");
-    const text = input.value.trim();
-
-    if (text === "" || currentReceiver === "") {
-        alert("من فضلك ابحث عن مستخدم أولاً لبدء الشات!");
-        return;
-    }
-
-    fetch(`/send?sender=${currentSender}&receiver=${currentReceiver}&message=${encodeURIComponent(text)}`)
-        .then(response => response.text())
-        .then(() => {
-            input.value = "";
-            loadMessages();
-        })
-        .catch(() => {
-            alert("فشل في إرسال الرسالة!");
+    try {
+        const response = await fetch(`${SERVER_URL}/login`, {
+            method: 'POST',
+            body: formData
         });
-}
 
-function searchUser() {
-    const phone = document.getElementById("phoneSearch").value.trim();
+        const result = await response.text();
 
-    if (phone === "") {
-        alert("من فضلك أدخل رقم هاتف للبحث!");
+        if (response.status === 200) {
+            currentUserPhone = phone;
+            // استخراج الاسم المرتجع من السيرفر
+            currentUserName = result.split(':')[1] || name || phone;
+            
+            document.getElementById('current-user-display').innerText = `${currentUserName} (${currentUserPhone})`;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('chat-screen').classList.remove('hidden');
+        } else if (response.status === 401) {
+            alert('كلمة السر خاطئة! هذا الرقم محمي ومسجل لشخص آخر.');
+        } else {
+            alert(result || 'حدث خطأ في التسجيل، تأكد من إدخال الاسم لو كنت تسجل لأول مرة.');
+        }
+    } catch (error) {
+        alert('فشل الاتصال بالسيرفر السحابي!');
+    }
+});
+
+// زر البحث عن صديق
+document.getElementById('search-btn').addEventListener('click', async () => {
+    const phone = document.getElementById('search-phone').value.trim();
+    if (!phone) return;
+
+    if (phone === currentUserPhone) {
+        alert('لا يمكنك الشات مع نفسك!');
         return;
     }
 
-    fetch("/search?phone=" + encodeURIComponent(phone))
-        .then(response => response.text())
-        .then(result => {
-            alert(result);
-            if (result.startsWith("Found:")) {
-                currentReceiver = phone;
-                loadMessages();
+    try {
+        const response = await fetch(`${SERVER_URL}/search?phone=${phone}`);
+        const result = await response.text();
+
+        if (result.startsWith('Found:')) {
+            activeChatReceiver = phone;
+            const friendName = result.replace('Found:', '').trim();
+            document.querySelector('.chat-header h2').innerText = `المحادثة مع: ${friendName}`;
+            document.getElementById('chat-box').innerHTML = ''; // تصفير الشات لبدء المحادثة
+            
+            // بدء جلب الرسائل تلقائياً كل ثانيتين
+            if (chatInterval) clearInterval(chatInterval);
+            fetchMessages();
+            chatInterval = setInterval(fetchMessages, 2000);
+        } else {
+            alert('هذا الرقم غير مسجل في التطبيق حتى الآن!');
+        }
+    } catch (error) {
+        alert('حدث خطأ أثناء البحث!');
+    }
+});
+
+// زر إرسال الرسالة
+document.getElementById('send-btn').addEventListener('click', async () => {
+    const msg = document.getElementById('message-input').value.trim();
+    if (!msg || !activeChatReceiver) return;
+
+    try {
+        await fetch(`${SERVER_URL}/send?sender=${currentUserPhone}&receiver=${activeChatReceiver}&message=${encodeURIComponent(msg)}`);
+        document.getElementById('message-input').value = '';
+        fetchMessages();
+    } catch (error) {
+        console.error('فشل إرسال الرسالة');
+    }
+});
+
+// دالة جلب الرسائل
+async function fetchMessages() {
+    if (!activeChatReceiver) return;
+    try {
+        const response = await fetch(`${SERVER_URL}/get_messages?sender=${currentUserPhone}&receiver=${activeChatReceiver}`);
+        const messages = await response.json();
+        
+        const chatBox = document.getElementById('chat-box');
+        chatBox.innerHTML = '';
+
+        messages.forEach(m => {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message');
+            if (m.sender === currentUserPhone) {
+                msgDiv.classList.add('sent');
+            } else {
+                msgDiv.classList.add('received');
             }
-        })
-        .catch(() => {
-            alert("حدث خطأ أثناء الاتصال بالسيرفر!");
+            msgDiv.innerText = m.message;
+            chatBox.appendChild(msgDiv);
         });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (error) {
+        console.error('خطأ في جلب الرسائل');
+    }
 }
-
-function loadMessages() {
-    if (currentReceiver === "" || currentSender === "") return;
-
-    fetch(`/get_messages?sender=${currentSender}&receiver=${currentReceiver}`)
-        .then(response => response.json())
-        .then(messages => {
-            if (messages.length !== lastMessageCount) {
-                const messagesContainer = document.getElementById("messages");
-                messagesContainer.innerHTML = "";
-
-                messages.forEach(msg => {
-                    const messageDiv = document.createElement("div");
-                    if (msg.sender === currentSender) {
-                        messageDiv.className = "message sent";
-                    } else {
-                        messageDiv.className = "message received";
-                    }
-                    messageDiv.textContent = msg.message;
-                    messagesContainer.appendChild(messageDiv);
-                });
-
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                lastMessageCount = messages.length;
-            }
-        });
-}
-
-setInterval(loadMessages, 2000);
