@@ -1,6 +1,8 @@
-// الربط التلقائي بالسيرفر المرفوع مع الواجهة في نفس مشروع Railway
-const SERVER_URL = window.location.origin; 
-const socket = io(SERVER_URL);
+// الربط المباشر برابط السيرفر الصحيح الخاص بك
+const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
+const socket = io(SERVER_URL, {
+    transports: ['websocket', 'polling'] // لضمان الاستجابة السريعة على الموبايل
+});
 
 let currentUser = null;
 let activeChatUser = null;
@@ -24,7 +26,7 @@ function toggleAuthForms() {
 // ================= إدارة الحسابات =================
 
 async function handleRegister(event) {
-    if (event) event.preventDefault(); // منع الصفحة من إعادة التحميل والتعليق
+    if (event) event.preventDefault(); // منع الصفحة من التعليق
 
     const username = document.getElementById("reg-name").value.trim();
     const phone = document.getElementById("reg-phone").value.trim();
@@ -32,42 +34,50 @@ async function handleRegister(event) {
 
     if (!username || !phone || !password) return alert("برجاء ملء جميع الحقول");
 
-    const response = await fetch(`${SERVER_URL}/api/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, phone, password })
-    });
-    
-    const data = await response.json();
-    if (data.status === "success") {
-        alert("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.");
-        toggleAuthForms();
-    } else {
-        alert(data.message);
+    try {
+        const response = await fetch(`${SERVER_URL}/api/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, phone, password })
+        });
+        
+        const data = await response.json();
+        if (data.status === "success") {
+            alert("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.");
+            toggleAuthForms();
+        } else {
+            alert(data.message);
+        }
+    } catch (err) {
+        alert("مشكلة في الاتصال بالسيرفر، جرب تاني");
     }
 }
 
 async function handleLogin(event) {
-    if (event) event.preventDefault(); // منع الصفحة من إعادة التحميل والتعليق
+    if (event) event.preventDefault(); // منع الصفحة من التعليق
 
     const phone = document.getElementById("login-phone").value.trim();
     const password = document.getElementById("login-pass").value.trim();
 
     if (!phone || !password) return alert("برجاء ملء الحقول");
 
-    const response = await fetch(`${SERVER_URL}/api/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, password })
-    });
+    try {
+        const response = await fetch(`${SERVER_URL}/api/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, password })
+        });
 
-    const data = await response.json();
-    if (data.status === "success") {
-        currentUser = data.user;
-        localStorage.setItem("chat_user", JSON.stringify(currentUser));
-        showChatScreen();
-    } else {
-        alert(data.message);
+        const data = await response.json();
+        if (data.status === "success") {
+            currentUser = data.user;
+            localStorage.setItem("chat_user", JSON.stringify(currentUser));
+            showChatScreen();
+        } else {
+            alert(data.message);
+        }
+    } catch (err) {
+        alert("خطأ في الاتصال بالسيرفر، تأكد من الشبكة");
     }
 }
 
@@ -94,19 +104,23 @@ async function handleSearch(event) {
     if (!phone) return;
     if (phone === currentUser.phone) return alert("لا يمكنك محادثة نفسك!");
 
-    const response = await fetch(`${SERVER_URL}/api/search?phone=${phone}`);
-    const data = await response.json();
+    try {
+        const response = await fetch(`${SERVER_URL}/api/search?phone=${phone}`);
+        const data = await response.json();
 
-    if (data.status === "success") {
-        const searchedUser = data.user;
-        if (!activeChats[searchedUser.phone]) {
-            activeChats[searchedUser.phone] = { username: searchedUser.username, messages: [] };
+        if (data.status === "success") {
+            const searchedUser = data.user;
+            if (!activeChats[searchedUser.phone]) {
+                activeChats[searchedUser.phone] = { username: searchedUser.username, messages: [] };
+            }
+            renderChatsList();
+            openChat(searchedUser.phone);
+            document.getElementById("search-phone").value = ""; 
+        } else {
+            alert(data.message);
         }
-        renderChatsList();
-        openChat(searchedUser.phone);
-        document.getElementById("search-phone").value = ""; 
-    } else {
-        alert(data.message);
+    } catch (err) {
+        alert("خطأ أثناء البحث عن المستخدم");
     }
 }
 
