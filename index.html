@@ -5,38 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>واتساب كول</title>
     <link rel="stylesheet" href="style.css">
-    <!-- مكتبة الأيقونات ومكتبة الـ Socket.io -->
-    <link rel="stylesheet" href="https://cloudflare.com">
+    <!-- مكتبة الـ Socket.io الأساسية فقط -->
     <script src="https://socket.io"></script>
 </head>
 <body>
 
-    <!-- ================= 1. شاشة تسجيل الدخول ================= -->
+    <!-- ================= 1. شاشة تسجيل الدخول وإنشاء الحساب ================= -->
     <div id="auth-screen" class="screen">
         <div class="auth-container">
             <div class="auth-header">
-                <i class="fab fa-whatsapp whatsapp-logo"></i>
+                <h2 style="color: #00a884; font-size: 32px; margin-bottom: 10px;">🟢</h2>
                 <h2>مرحباً بك في واتساب</h2>
             </div>
             
             <!-- نموذج الدخول -->
-            <div id="login-form" class="form-box">
+            <form id="login-form" class="form-box" onsubmit="handleLogin(event)">
                 <h3>تسجيل الدخول</h3>
                 <input type="tel" id="login-phone" placeholder="رقم الهاتف" required>
                 <input type="password" id="login-pass" placeholder="كلمة المرور" required>
-                <button type="button" onclick="handleLogin()">دخول</button>
+                <button type="submit">دخول</button>
                 <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()">إنشاء حساب جديد</span></p>
-            </div>
+            </form>
 
             <!-- نموذج التسجيل -->
-            <div id="register-form" class="form-box hidden">
+            <form id="register-form" class="form-box hidden" onsubmit="handleRegister(event)">
                 <h3>إنشاء حساب جديد</h3>
                 <input type="text" id="reg-name" placeholder="الاسم المستعار" required>
                 <input type="tel" id="reg-phone" placeholder="رقم الهاتف" required>
                 <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
-                <button type="button" onclick="handleRegister()">تسجيل</button>
+                <button type="submit">تسجيل</button>
                 <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()">تسجيل الدخول</span></p>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -44,65 +43,63 @@
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
             
+            <!-- القائمة الجانبية -->
             <aside class="sidebar">
                 <header class="sidebar-header">
                     <div class="user-profile">
-                        <div class="avatar"><i class="fas fa-user"></i></div>
-                        <span id="current-user-name">المستخدم</span>
+                        <span id="current-user-name" style="font-weight: bold;">المستخدم</span>
                     </div>
-                    <div class="header-icons">
-                        <i class="fas fa-comment-alt"></i>
-                        <i class="fas fa-ellipsis-v" onclick="logout()"></i>
+                    <div>
+                        <button onclick="logout()" style="padding: 5px 10px; background: #e9edef; border: none; border-radius: 5px; cursor: pointer;">خروج</button>
                     </div>
                 </header>
 
+                <!-- خانة البحث عن شخص بالرقم -->
                 <div class="search-bar-container">
-                    <div class="search-input-wrapper">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="tel" id="search-phone" placeholder="ابحث عن شخص برقم الهاتف..." onkeypress="handleSearch(event)">
-                    </div>
+                    <input type="tel" id="search-phone" placeholder="ابحث عن رقم واضغط Enter..." onkeypress="handleSearch(event)" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none;">
                 </div>
 
+                <!-- قائمة الشاتات النشطة -->
                 <div class="chats-list" id="chats-list-container">
-                    <div class="no-chats">لا توجد محادثات الحالية. ابحث عن رقم لبدء دردشة!</div>
+                    <div class="no-chats">لا توجد محادثات حالية. ابحث عن رقم لبدء دردشة!</div>
                 </div>
             </aside>
 
+            <!-- منطقة المحادثة المفتوحة -->
             <main class="chat-area">
+                <!-- واجهة الترحيب الافتراضية -->
                 <div id="welcome-chat-view" class="welcome-view">
-                    <i class="fab fa-whatsapp"></i>
                     <h2>واتساب للويب</h2>
                     <p>أرسل واستقبل الرسائل فورياً دون الحاجة لإبقاء هاتفك متصلاً.</p>
                 </div>
 
+                <!-- واجهة الشات النشط -->
                 <div id="active-chat-view" class="active-view hidden">
                     <header class="chat-header">
                         <div class="active-user-info">
-                            <div class="avatar"><i class="fas fa-user"></i></div>
                             <div>
                                 <h4 id="active-chat-name">اسم الصديق</h4>
-                                <p id="active-chat-status">متصل</p>
+                                <p id="active-chat-status" style="color: #00a884; font-size: 12px;">متصل</p>
                             </div>
-                        </div>
-                        <div class="chat-header-icons">
-                            <i class="fas fa-search"></i>
-                            <i class="fas fa-paperclip"></i>
                         </div>
                     </header>
 
+                    <!-- صندوق الرسائل -->
                     <div class="messages-container" id="messages-box"></div>
 
+                    <!-- شريط إدخال الرسالة السفلي -->
                     <footer class="chat-footer">
-                        <i class="far fa-smile icon-btn"></i>
-                        <input type="text" id="message-input" placeholder="اكتب رسالة..." onkeypress="handleSendMessage(event)">
-                        <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                        <input type="text" id="message-input" placeholder="اكتب رسالة واضغط Enter..." onkeypress="handleSendMessage(event)" style="flex: 1; padding: 10px; border: none; border-radius: 5px;">
+                        <button onclick="sendMessage()" style="padding: 10px 15px; background: #00a884; color: white; border: none; border-radius: 5px; margin-right: 10px; cursor: pointer;">إرسال</button>
                     </footer>
                 </div>
+
             </main>
+
         </div>
     </div>
 
-    <!-- استدعاء ملف الـ JS في النهاية خالص وبخاصية defer لتجنب التجميد -->
+    <!-- استدعاء ملف الـ JS -->
     <script src="app.js" defer></script>
 </body>
 </html>
