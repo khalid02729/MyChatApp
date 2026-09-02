@@ -6,7 +6,6 @@ let currentUser = null;
 let activeChatUser = null;
 let activeChats = {}; 
 
-// عند تحميل الصفحة، التأكد من حالة تسجيل الدخول السابقة
 document.addEventListener("DOMContentLoaded", () => {
     const savedUser = localStorage.getItem("chat_user");
     if (savedUser) {
@@ -20,11 +19,10 @@ function toggleAuthForms() {
     document.getElementById("register-form").classList.toggle("hidden");
 }
 
-// ================= إدارة الحسابات ودخول فوري آمن =================
+// ================= إدارة الحسابات =================
 
 async function handleRegister(event) {
     if (event) event.preventDefault(); 
-
     const username = document.getElementById("reg-name").value.trim();
     const phone = document.getElementById("reg-phone").value.trim();
     const password = document.getElementById("reg-pass").value.trim();
@@ -37,7 +35,6 @@ async function handleRegister(event) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username, phone, password })
         });
-        
         const data = await response.json();
         if (data.status === "success") {
             alert("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.");
@@ -46,13 +43,12 @@ async function handleRegister(event) {
             alert(data.message);
         }
     } catch (err) {
-        alert("مشكلة في الاتصال بالسيرفر، جرب تاني");
+        alert("مشكلة في الاتصال بالسيرفر");
     }
 }
 
 async function handleLogin(event) {
     if (event) event.preventDefault(); 
-
     const phone = document.getElementById("login-phone").value.trim();
     const password = document.getElementById("login-pass").value.trim();
 
@@ -64,56 +60,41 @@ async function handleLogin(event) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ phone, password })
         });
-
         const data = await response.json();
         if (data.status === "success") {
             currentUser = data.user;
             localStorage.setItem("chat_user", JSON.stringify(currentUser));
-            
-            // دخول إجباري فوري للشاشة الداخلية بدون انتظار الـ Socket
             showChatScreen();
         } else {
             alert(data.message);
         }
     } catch (err) {
-        alert("خطأ في الاتصال بالشبكة، جرب مرة أخرى");
+        alert("خطأ في الاتصال بالشبكة");
     }
 }
 
 function showChatScreen() {
-    // إخفاء شاشة الدخول وإظهار شاشة الشات فوراً غصب عن المتصفح
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("chat-screen").classList.remove("hidden");
     document.getElementById("current-user-name").innerText = currentUser.username;
-
-    // تشغيل الـ Socket بأمان تام في الخلفية بدون ما يعطل الحركة
     setTimeout(initSocketConnection, 1000);
+    
+    // تشغيل جلب تلقائي للرسائل كل 3 ثواني كدعم إضافي لضمان وصول الرسايل للطرفين فوراً
+    setInterval(fetchActiveChatMessages, 3000);
 }
 
 function initSocketConnection() {
-    if (typeof io === 'undefined') {
-        console.log("Socket.io library not loaded yet, skipping realtime for now.");
-        return;
-    }
-
+    if (typeof io === 'undefined') return;
     try {
-        socket = io(SERVER_URL, {
-            transports: ['polling', 'websocket'],
-            upgrade: true,
-            rememberUpgrade: true
-        });
-
+        socket = io(SERVER_URL, { transports: ['polling', 'websocket'] });
         socket.on("connect", () => {
-            console.log("Connected to Realtime Server");
             socket.emit("join", { phone: currentUser.phone });
         });
-
         socket.on("receive_message", (data) => {
             handleIncomingMessage(data);
         });
-
     } catch (e) {
-        console.log("Socket connection holding safely...");
+        console.log("Socket connection backup waiting...");
     }
 }
 
@@ -122,11 +103,10 @@ function logout() {
     window.location.reload();
 }
 
-// ================= البحث وبدء محادثة جديدة =================
+// ================= البحث والمحادثات =================
 
 async function handleSearch(event) {
     if (event.key !== "Enter") return;
-    
     const phone = document.getElementById("search-phone").value.trim();
     if (!phone) return;
     if (phone === currentUser.phone) return alert("لا يمكنك محادثة نفسك!");
@@ -134,7 +114,6 @@ async function handleSearch(event) {
     try {
         const response = await fetch(`${SERVER_URL}/api/search?phone=${phone}`);
         const data = await response.json();
-
         if (data.status === "success") {
             const searchedUser = data.user;
             if (!activeChats[searchedUser.phone]) {
@@ -147,50 +126,52 @@ async function handleSearch(event) {
             alert(data.message);
         }
     } catch (err) {
-        alert("خطأ أثناء البحث عن المستخدم");
+        alert("خطأ أثناء البحث");
     }
 }
 
 function renderChatsList() {
     const container = document.getElementById("chats-list-container");
     container.innerHTML = "";
-
     const keys = Object.keys(activeChats);
     if (keys.length === 0) {
         container.innerHTML = `<div class="no-chats">لا توجد محادثات حالية. ابحث عن رقم لبدء دردشة!</div>`;
         return;
     }
-
     keys.forEach(phone => {
         const chat = activeChats[phone];
         const lastMsg = chat.messages.length > 0 ? chat.messages[chat.messages.length - 1].message : "اضغط لبدء المحادثة...";
         const isActive = activeChatUser && activeChatUser.phone === phone ? "active" : "";
-
         const chatItem = document.createElement("div");
         chatItem.className = `chat-item ${isActive}`;
         chatItem.onclick = () => openChat(phone);
-        chatItem.innerHTML = `
-            <div class="chat-item-info">
-                <h4>${chat.username}</h4>
-                <p>${lastMsg}</p>
-            </div>
-        `;
+        chatItem.innerHTML = `<div class="chat-item-info"><h4>${chat.username}</h4><p>${lastMsg}</p></div>`;
         container.appendChild(chatItem);
     });
 }
 
 function openChat(phone) {
     activeChatUser = { phone: phone, username: activeChats[phone].username };
-    
     document.getElementById("welcome-chat-view").classList.add("hidden");
     document.getElementById("active-chat-view").classList.remove("hidden");
     document.getElementById("active-chat-name").innerText = activeChatUser.username;
-    
-    renderMessages();
-    renderChatsList(); 
+    fetchActiveChatMessages();
 }
 
-// ================= إرسال واستقبال الرسائل الذكي والمضمون =================
+// جلب وتحديث الرسائل من السيرفر بشكل مضمون للطرفين
+async function fetchActiveChatMessages() {
+    if (!activeChatUser) return;
+    try {
+        const response = await fetch(`${SERVER_URL}/api/messages?sender=${currentUser.phone}&receiver=${activeChatUser.phone}`);
+        const messages = await response.json();
+        activeChats[activeChatUser.phone].messages = messages;
+        renderMessages();
+    } catch (err) {
+        console.log("Error syncing messages...");
+    }
+}
+
+// ================= إرسال وعرض الرسائل =================
 
 function handleSendMessage(event) {
     if (event.key === "Enter") sendMessage();
@@ -207,61 +188,43 @@ async function sendMessage() {
         message: messageText
     };
 
-    // تفريغ الحقل فوراً كشكل جمالي مثل الواتساب
     input.value = ""; 
 
-    // إذا كان الـ socket متصل، ارسل فورياً لايف
-    if (socket && socket.connected) {
-        socket.emit("send_message", messageData);
-    } else {
-        // إذا كان معلق، أرسلها كـ HTTP POST للسيرفر وهتوصل وتتحفظ وتظهر عندك فوراً
-        try {
-            const response = await fetch(`${SERVER_URL}/api/send`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(messageData)
-            });
-            const data = await response.json();
-            if (data.status === "success") {
-                handleIncomingMessage(messageData); // عرضها في شاشتك فوراً
-            }
-        } catch (err) {
-            alert("فشل إرسال الرسالة، تأكد من الاتصال");
-        }
+    try {
+        // إرسال للسيرفر عبر الـ API لضمان الحفظ الفوري وقرأتها عند الطرفين
+        await fetch(`${SERVER_URL}/api/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(messageData)
+        });
+        fetchActiveChatMessages(); // تحديث الشاشة فوراً بعد الإرسال
+    } catch (err) {
+        alert("فشل إرسال الرسالة");
     }
 }
 
 function handleIncomingMessage(data) {
     const partnerPhone = data.sender_phone === currentUser.phone ? data.receiver_phone : data.sender_phone;
-    const partnerName = data.sender_phone === currentUser.phone ? activeChatUser.username : "مستخدم"; 
-
-    if (!activeChats[partnerPhone]) {
-        activeChats[partnerPhone] = { username: partnerName, messages: [] };
-    }
-
-    activeChats[partnerPhone].messages.push(data);
-
     if (activeChatUser && activeChatUser.phone === partnerPhone) {
-        renderMessages();
+        fetchActiveChatMessages();
     }
-
-    renderChatsList();
 }
 
 function renderMessages() {
     const box = document.getElementById("messages-box");
     box.innerHTML = "";
-
     if (!activeChatUser || !activeChats[activeChatUser.phone]) return;
 
     const messages = activeChats[activeChatUser.phone].messages;
     messages.forEach(msg => {
-        const isSent = msg.sender_phone === currentUser.phone;
+        const isMe = msg.sender_phone === currentUser.phone;
         const bubble = document.createElement("div");
-        bubble.className = `msg-bubble ${isSent ? 'sent' : 'received'}`;
+        
+        // تفريق الاتجاهات والألوان
+        bubble.className = `msg-bubble ${isMe ? 'sent' : 'received'}`;
         bubble.innerText = msg.message;
         box.appendChild(bubble);
     });
-
     box.scrollTop = box.scrollHeight;
 }
+
