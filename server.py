@@ -8,15 +8,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.config['SECRET_KEY'] = 'whatsapp_secret_key_123'
 
+# إعداد SocketIO للعمل مع السيرفرات السحابية مثل Railway وبدون مشاكل CORS
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 DATABASE = 'chat_app.db'
 
+# وظيفة للاتصال بقاعدة بيانات SQLite
 def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
+# إنشاء جداول قاعدة البيانات إذا لم تكن موجودة
 def init_db():
     with get_db() as conn:
         conn.execute('''
@@ -45,7 +48,7 @@ init_db()
 def index():
     return send_from_directory('.', 'index.html')
 
-# ================= مسارات الـ API =================
+# ================= مسارات الـ API (التسجيل، الدخول، والبحث) =================
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -95,7 +98,7 @@ def search_user():
         return jsonify({'status': 'success', 'user': {'username': user['username'], 'phone': user['phone']}})
     return jsonify({'status': 'error', 'message': 'المستخدم غير موجود.. تأكد من الرقم'}), 404
 
-# ================= اتصالات الـ SocketIO =================
+# ================= اتصالات الـ SocketIO للدردشة الفورية =================
 
 @socketio.on('join')
 def on_join(data):
@@ -118,4 +121,5 @@ def handle_message(data):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    # التشغيل الصحيح المتوافق مع بيئة بيع السيرفرات لـ Railway
+    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
