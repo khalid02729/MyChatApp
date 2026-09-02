@@ -1,3 +1,4 @@
+
 const SERVER_URL = 'https://railway.app';
 
 let currentUserPhone = '';
@@ -12,7 +13,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     const password = document.getElementById('login-pass').value.trim();
 
     if (!phone || !password) {
-        alert('من فضلك اكتب رقم الموبايل وكلمة السر!');
+        alert('من فضلك اكتب رقم الموبايل وكلمة السر لتأمين حسابك!');
         return;
     }
 
@@ -31,23 +32,22 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 
         if (response.status === 200) {
             currentUserPhone = phone;
-            // استخراج الاسم المرتجع من السيرفر
-            currentUserName = result.split(':')[1] || name || phone;
+            currentUserName = name || phone;
             
-            document.getElementById('current-user-display').innerText = `${currentUserName} (${currentUserPhone})`;
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('chat-screen').classList.remove('hidden');
+            document.getElementById('current-user-display').innerText = `المستخدم: ${currentUserName}`;
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('chat-screen').style.display = 'flex';
         } else if (response.status === 401) {
             alert('كلمة السر خاطئة! هذا الرقم محمي ومسجل لشخص آخر.');
         } else {
-            alert(result || 'حدث خطأ في التسجيل، تأكد من إدخال الاسم لو كنت تسجل لأول مرة.');
+            alert('خطأ في البيانات أو الرقم مسجل مسبقاً، يرجى كتابة البasورد الصحيحة.');
         }
     } catch (error) {
-        alert('فشل الاتصال بالسيرفر السحابي!');
+        alert('فشل الاتصال بالسيرفر السحابي، تأكد أن السيرفر يعمل في موقع Railway!');
     }
 });
 
-// زر البحث عن صديق
+// زر البحث عن صديق وبدء التمكين
 document.getElementById('search-btn').addEventListener('click', async () => {
     const phone = document.getElementById('search-phone').value.trim();
     if (!phone) return;
@@ -64,15 +64,19 @@ document.getElementById('search-btn').addEventListener('click', async () => {
         if (result.startsWith('Found:')) {
             activeChatReceiver = phone;
             const friendName = result.replace('Found:', '').trim();
-            document.querySelector('.chat-header h2').innerText = `المحادثة مع: ${friendName}`;
-            document.getElementById('chat-box').innerHTML = ''; // تصفير الشات لبدء المحادثة
+            document.querySelector('.identity-text h3').innerText = `المحادثة مع: ${friendName}`;
+            document.getElementById('chat-box').innerHTML = ''; 
             
-            // بدء جلب الرسائل تلقائياً كل ثانيتين
+            // تمكين أزرار الكتابة والإرسال بعد العثور على الصديق
+            document.getElementById('message-input').disabled = false;
+            document.getElementById('send-btn').disabled = false;
+            document.getElementById('message-input').focus();
+            
             if (chatInterval) clearInterval(chatInterval);
             fetchMessages();
             chatInterval = setInterval(fetchMessages, 2000);
         } else {
-            alert('هذا الرقم غير مسجل في التطبيق حتى الآن!');
+            alert('هذا الرقم غير مسجل في خالد شات حتى الآن!');
         }
     } catch (error) {
         alert('حدث خطأ أثناء البحث!');
@@ -93,7 +97,14 @@ document.getElementById('send-btn').addEventListener('click', async () => {
     }
 });
 
-// دالة جلب الرسائل
+// دعم الإرسال عن طريق زر الإنتر في الكيبورد
+document.getElementById('message-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        document.getElementById('send-btn').click();
+    }
+});
+
+// دالة جلب الرسائل وعرضها بفقاعات شيك
 async function fetchMessages() {
     if (!activeChatReceiver) return;
     try {
@@ -102,6 +113,11 @@ async function fetchMessages() {
         
         const chatBox = document.getElementById('chat-box');
         chatBox.innerHTML = '';
+
+        if(messages.length === 0) {
+            chatBox.innerHTML = '<div class="empty-state"><h4>لا توجد رسائل بينكم بعد</h4><p>اكتب رسالة بالأسفل لبدء الكلام الحين.</p></div>';
+            return;
+        }
 
         messages.forEach(m => {
             const msgDiv = document.createElement('div');
@@ -119,3 +135,8 @@ async function fetchMessages() {
         console.error('خطأ في جلب الرسائل');
     }
 }
+
+// زر تسجيل الخروج
+document.getElementById('logout-btn').addEventListener('click', () => {
+    location.reload();
+});
