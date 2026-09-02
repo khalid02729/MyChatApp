@@ -7,8 +7,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.config['SECRET_KEY'] = 'whatsapp_secret_key_123'
 
-# فتح الأمان لأقصى درجة وتحديد الـ transports لضمان عمل الموبايل
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60)
+# تعديل السطر ده عشان يشتغل تلقائي بدون مشاكل async_mode على Railway
+socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60)
 
 DATABASE = 'chat_app.db'
 
@@ -83,7 +83,7 @@ def search_user():
         return jsonify({'status': 'success', 'user': {'username': user['username'], 'phone': user['phone']}})
     return jsonify({'status': 'error', 'message': 'المستخدم غير موجود'}), 404
 
-# مسار بديل لإرسال الرسائل وحفظها كـ HTTP في حال تعطل الـ Socket
+# مسار بديل ومضمون لإرسال الرسائل وحفظها فوراً في قاعدة البيانات
 @app.route('/api/send', methods=['POST'])
 def send_message_api():
     data = request.json
@@ -95,7 +95,6 @@ def send_message_api():
         conn.execute('INSERT INTO messages (sender_phone, receiver_phone, message) VALUES (?, ?, ?)', (sender, receiver, message_text))
         conn.commit()
         
-    # محاولة بثها عبر الـ socket لو أمكن للطرف الثاني
     try:
         socketio.emit('receive_message', data, room=receiver)
         socketio.emit('receive_message', data, room=sender)
