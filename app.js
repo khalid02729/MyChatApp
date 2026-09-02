@@ -5,8 +5,8 @@ let socket = null;
 let currentUser = null;
 let activeChatUser = null;
 let activeChats = {}; 
+let temporaryUsername = ""; 
 
-// عند تحميل الصفحة، التأكد من حالة تسجيل الدخول السابقة
 document.addEventListener("DOMContentLoaded", () => {
     const savedUser = localStorage.getItem("chat_user");
     if (savedUser) {
@@ -18,28 +18,37 @@ document.addEventListener("DOMContentLoaded", () => {
 function toggleAuthForms() {
     document.getElementById("login-form").classList.toggle("hidden");
     document.getElementById("register-form").classList.toggle("hidden");
+    document.getElementById("otp-form").classList.add("hidden");
+}
+
+function cancelOTP() {
+    document.getElementById("otp-form").classList.add("hidden");
+    document.getElementById("login-form").classList.remove("hidden");
+    document.getElementById("register-form").classList.add("hidden");
 }
 
 // ================= إدارة الحسابات =================
 
 async function handleRegister(event) {
     if (event) event.preventDefault(); 
-    const username = document.getElementById("reg-name").value.trim();
-    const phone = document.getElementById("reg-phone").value.trim();
+    const username = document.getElementById("reg-username").value.trim();
+    const email = document.getElementById("reg-email").value.trim();
     const password = document.getElementById("reg-pass").value.trim();
 
-    if (!username || !phone || !password) return alert("برجاء ملء جميع الحقول");
+    if (!username || !email || !password) return alert("برجاء ملء جميع الحقول");
 
     try {
         const response = await fetch(`${SERVER_URL}/api/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, phone, password })
+            body: JSON.stringify({ username, email, password })
         });
         const data = await response.json();
         if (data.status === "success") {
-            alert("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.");
-            toggleAuthForms();
+            alert(data.message);
+            temporaryUsername = username;
+            document.getElementById("register-form").classList.add("hidden");
+            document.getElementById("otp-form").classList.remove("hidden");
         } else {
             alert(data.message);
         }
@@ -48,24 +57,52 @@ async function handleRegister(event) {
     }
 }
 
+async function handleVerifyOTP(event) {
+    if (event) event.preventDefault();
+    const otp = document.getElementById("otp-input").value.trim();
+
+    try {
+        const response = await fetch(`${SERVER_URL}/api/verify-otp`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: temporaryUsername, otp: otp })
+        });
+        const data = await response.json();
+        if (data.status === "success") {
+            alert(data.message);
+            cancelOTP();
+        } else {
+            alert(data.message);
+        }
+    } catch (err) {
+        alert("خطأ أثناء تفعيل الكود");
+    }
+}
+
 async function handleLogin(event) {
     if (event) event.preventDefault(); 
-    const phone = document.getElementById("login-phone").value.trim();
+    const username = document.getElementById("login-username").value.trim();
     const password = document.getElementById("login-pass").value.trim();
 
-    if (!phone || !password) return alert("برجاء ملء الحقول");
+    if (!username || !password) return alert("برجاء ملء الحقول");
 
     try {
         const response = await fetch(`${SERVER_URL}/api/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phone, password })
+            body: JSON.stringify({ username, password })
         });
         const data = await response.json();
+        
         if (data.status === "success") {
             currentUser = data.user;
             localStorage.setItem("chat_user", JSON.stringify(currentUser));
             showChatScreen();
+        } else if (data.status === "unverified") {
+            alert(data.message);
+            temporaryUsername = username;
+            document.getElementById("login-form").classList.add("hidden");
+            document.getElementById("otp-form").classList.remove("hidden");
         } else {
             alert(data.message);
         }
@@ -81,8 +118,12 @@ function showChatScreen() {
     
     initSocketConnection();
     
-    // تحديث المحادثة في الخلفية كل 3 ثواني لضمان المزامنة الفورية للطرفين
-    setInterval(fetchActiveChatMessages, 3000);
+    loadActiveChatsFromServer();
+    
+    setInterval(() => {
+        fetchActiveChatMessages();
+        loadActiveChatsFromServer();
+    }, 3000);
 }
 
 function initSocketConnection() {
@@ -94,16 +135,32 @@ function initSocketConnection() {
             reconnectionAttempts: Infinity,
             reconnectionDelay: 1000
         });
-
         socket.on("connect", () => {
-            socket.emit("join", { phone: currentUser.phone });
+            socket.emit("join", { username: currentUser.username });
         });
-
         socket.on("receive_message", (data) => {
             handleIncomingMessage(data);
         });
     } catch (e) {
-        console.log("Socket connection backup waiting...");
+        console.log("Socket waiting...");
+    }
+}
+
+async function loadActiveChatsFromServer() {
+    if (!currentUser) return;
+    try {
+        const response = await fetch(`${SERVER_URL}/api/active-chats?username=${currentUser.username}`);
+        const chats = await response.json();
+        
+        chats.forEach(c => {
+            if (!activeChats[c.username]) {
+                activeChats[c.username] = { username: c.username, messages: [] };
+            }
+        });
+        
+        renderChatsList(chats);
+    } catch (err) {
+        console.log("Error loading active chats summary");
     }
 }
 
@@ -116,70 +173,79 @@ function logout() {
 
 async function handleSearch(event) {
     if (event.key !== "Enter") return;
-    const phone = document.getElementById("search-phone").value.trim();
-    if (!phone) return;
-    if (phone === currentUser.phone) return alert("لا يمكنك محادثة نفسك!");
+    const username = document.getElementById("search-username").value.trim();
+    if (!username) return;
+    if (username === currentUser.username) return alert("لا يمكنك محادثة نفسك!");
 
     try {
-        const response = await fetch(`${SERVER_URL}/api/search?phone=${phone}`);
+        const response = await fetch(`${SERVER_URL}/api/search?username=${username}`);
         const data = await response.json();
         if (data.status === "success") {
             const searchedUser = data.user;
-            if (!activeChats[searchedUser.phone]) {
-                activeChats[searchedUser.phone] = { username: searchedUser.username, messages: [] };
+            if (!activeChats[searchedUser.username]) {
+                activeChats[searchedUser.username] = { username: searchedUser.username, messages: [] };
             }
-            renderChatsList();
-            openChat(searchedUser.phone);
-            document.getElementById("search-phone").value = ""; 
+            document.getElementById("search-username").value = ""; 
+            openChat(searchedUser.username);
         } else {
             alert(data.message);
         }
     } catch (err) {
-        alert("خطأ أثناء البحث عن الرقم");
+        alert("خطأ أثناء البحث عن الاسم");
     }
 }
 
-function renderChatsList() {
+function renderChatsList(serverChats = []) {
     const container = document.getElementById("chats-list-container");
     container.innerHTML = "";
-    const keys = Object.keys(activeChats);
-    if (keys.length === 0) {
-        container.innerHTML = `<div class="no-chats">لا توجد محادثات حالية. ابحث عن رقم لبدء دردشة!</div>`;
+
+    const displayChats = serverChats.length > 0 ? serverChats : Object.keys(activeChats).map(k => ({username: k, last_message: "اضغط لبدء المحادثة..."}));
+
+    if (displayChats.length === 0) {
+        container.innerHTML = `<div class="no-chats">لا توجد محادثات حالية. ابحث عن اسم مستخدم لبدء دردشة!</div>`;
         return;
     }
-    keys.forEach(phone => {
-        const chat = activeChats[phone];
-        const lastMsg = chat.messages.length > 0 ? chat.messages[chat.messages.length - 1].message : "اضغط لبدء المحادثة...";
-        const isActive = activeChatUser && activeChatUser.phone === phone ? "active" : "";
+
+    displayChats.forEach(chat => {
+        const isActive = activeChatUser && activeChatUser.username === chat.username ? "active" : "";
         const chatItem = document.createElement("div");
         chatItem.className = `chat-item ${isActive}`;
-        chatItem.onclick = () => openChat(phone);
-        chatItem.innerHTML = `<div class="chat-item-info"><h4>${chat.username}</h4><p>${lastMsg}</p></div>`;
+        chatItem.onclick = () => openChat(chat.username);
+        chatItem.innerHTML = `
+            <div class="avatar-circle"><i class="fas fa-user"></i></div>
+            <div class="chat-item-info">
+                <h4>${chat.username}</h4>
+                <p>${chat.last_message}</p>
+            </div>
+        `;
         container.appendChild(chatItem);
     });
 }
 
-function openChat(phone) {
-    activeChatUser = { phone: phone, username: activeChats[phone].username };
+function openChat(username) {
+    activeChatUser = { username: username };
     document.getElementById("welcome-chat-view").classList.add("hidden");
     document.getElementById("active-chat-view").classList.remove("hidden");
     document.getElementById("active-chat-name").innerText = activeChatUser.username;
     fetchActiveChatMessages();
+    loadActiveChatsFromServer();
 }
 
 async function fetchActiveChatMessages() {
     if (!activeChatUser) return;
     try {
-        const response = await fetch(`${SERVER_URL}/api/messages?sender=${currentUser.phone}&receiver=${activeChatUser.phone}`);
+        const response = await fetch(`${SERVER_URL}/api/messages?sender=${currentUser.username}&receiver=${activeChatUser.username}`);
         const messages = await response.json();
-        activeChats[activeChatUser.phone].messages = messages;
+        if (activeChats[activeChatUser.username]) {
+            activeChats[activeChatUser.username].messages = messages;
+        }
         renderMessages();
     } catch (err) {
-        console.log("Error syncing messages history");
+        console.log("Error syncing history");
     }
 }
 
-// ================= إرسال فوري ومضمون 100% =================
+// ================= إرسال الرسائل =================
 
 function handleSendMessage(event) {
     if (event.key === "Enter") sendMessage();
@@ -191,23 +257,22 @@ async function sendMessage() {
     if (!messageText || !activeChatUser) return;
 
     const messageData = {
-        sender_phone: currentUser.phone,
-        receiver_phone: activeChatUser.phone,
+        sender_username: currentUser.username,
+        receiver_username: activeChatUser.username,
         message: messageText
     };
 
-    input.value = ""; // مسح الخانة فوراً مثل الواتساب
+    input.value = ""; 
 
-    // إرسال عبر الـ API البديل والسريع لضمان الإرسال اللحظي بدون تعليق
     try {
         await fetch(`${SERVER_URL}/api/send`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(messageData)
         });
-        fetchActiveChatMessages(); // تحديث الرسائل في شاشتك فوراً
+        fetchActiveChatMessages(); 
+        loadActiveChatsFromServer();
     } catch (err) {
-        console.log("API send failed, trying socket...");
         if (socket && socket.connected) {
             socket.emit("send_message", messageData);
         }
@@ -215,25 +280,16 @@ async function sendMessage() {
 }
 
 function handleIncomingMessage(data) {
-    const partnerPhone = data.sender_phone === currentUser.phone ? data.receiver_phone : data.sender_phone;
-    if (activeChatUser && activeChatUser.phone === partnerPhone) {
+    const partnerName = data.sender_username === currentUser.username ? data.receiver_username : data.sender_username;
+    if (activeChatUser && activeChatUser.username === partnerName) {
         fetchActiveChatMessages();
     }
+    loadActiveChatsFromServer();
 }
 
 function renderMessages() {
     const box = document.getElementById("messages-box");
     box.innerHTML = "";
-    if (!activeChatUser || !activeChats[activeChatUser.phone]) return;
+    if (!activeChatUser || !activeChats[activeChatUser.username]) return;
 
-    const messages = activeChats[activeChatUser.phone].messages;
-    messages.forEach(msg => {
-        const isMe = msg.sender_phone === currentUser.phone;
-        const bubble = document.createElement("div");
-        
-        bubble.className = `msg-bubble ${isMe ? 'sent' : 'received'}`;
-        bubble.innerText = msg.message;
-        box.appendChild(bubble);
-    });
-    box.scrollTop = box.scrollHeight; 
-}
+
