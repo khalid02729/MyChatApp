@@ -14,7 +14,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
-            phone TEXT UNIQUE
+            phone TEXT UNIQUE,
+            password TEXT
         )
     """)
     cursor.execute("""
@@ -68,26 +69,44 @@ class ChatHandler(http.server.SimpleHTTPRequestHandler):
             
             name = params.get('name', [''])[0].strip()
             phone = params.get('phone', [''])[0].strip()
+            password = params.get('password', [''])[0].strip()
             
-            if name and phone:
-                conn = sqlite3.connect(DB)
-                cursor = conn.cursor()
-                try:
-                    cursor.execute("INSERT INTO users (name, phone) VALUES (?, ?)", (name, phone))
-                    conn.commit()
-                except sqlite3.IntegrityError:
-                    pass
-                conn.close()
-                
-                self.send_response(200)
-                self.send_header("Content-Type", "text/plain; charset=utf-8")
-                self.end_headers()
-                self.wfile.write("Login successful".encode('utf-8'))
-            else:
+            if not phone or not password:
                 self.send_response(400)
-                self.send_header("Content-Type", "text/plain; charset=utf-8")
                 self.end_headers()
                 self.wfile.write("Missing fields".encode('utf-8'))
+                return
+
+            conn = sqlite3.connect(DB)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name, password FROM users WHERE phone = ?", (phone,))
+            user = cursor.fetchone()
+
+            if user:
+                if user[1] == password:
+                    response_msg = f"Login successful:{user[0]}"
+                    self.send_response(200)
+                else:
+                    response_msg = "Wrong password"
+                    self.send_response(401)
+            else:
+                if name:
+                    try:
+                        cursor.execute("INSERT INTO users (name, phone, password) VALUES (?, ?, ?)", (name, phone, password))
+                        conn.commit()
+                        response_msg = f"Registration successful:{name}"
+                        self.send_response(200)
+                    except sqlite3.IntegrityError:
+                        response_msg = "Error creating user"
+                        self.send_response(400)
+                else:
+                    response_msg = "Please enter your name to register"
+                    self.send_response(400)
+
+            conn.close()
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(response_msg.encode('utf-8'))
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -143,6 +162,7 @@ class ChatHandler(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
 if __name__ == '__main__':
+    import os
     port = int(os.environ.get('PORT', 8082))
     server = http.server.ThreadingHTTPServer(('0.0.0.0', port), ChatHandler)
     print(f"Server running on port {port}...")
