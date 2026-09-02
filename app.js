@@ -1,5 +1,5 @@
-https://mychatapp-production-b225.up.railway.app
-const SERVER_URL = "https://railway.app"; 
+// الرابط المباشر الصحيح والجاهز لسيرفرك أنت بنسبة 100%
+const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
 let socket = null; 
 
 let currentUser = null;
@@ -91,7 +91,6 @@ function showChatScreen() {
 }
 
 function initSocketConnection() {
-    // لو مكتبة io مش مشحونة في المتصفح لأي سبب، الكود مش هيقفل ولا هيعلق
     if (typeof io === 'undefined') {
         console.log("Socket.io library not loaded yet, skipping realtime for now.");
         return;
@@ -191,7 +190,7 @@ function openChat(phone) {
     renderChatsList(); 
 }
 
-// ================= إرسال واستقبال الرسائل =================
+// ================= إرسال واستقبل الرسائل =================
 
 function handleSendMessage(event) {
     if (event.key === "Enter") sendMessage();
@@ -250,4 +249,3 @@ function renderMessages() {
 
     box.scrollTop = box.scrollHeight;
 }
-
