@@ -5,17 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>واتساب كول</title>
     <link rel="stylesheet" href="style.css">
-    <!-- مكتبة الأيقونات الرسمية لشكل العدسة والواتساب -->
     <link rel="stylesheet" href="https://cloudflare.com">
     <script src="https://socket.io"></script>
 </head>
 <body>
 
-    <!-- ================= 1. شاشة تسجيل الدخول والـ OTP ================= -->
+    <!-- شاشة تسجيل الدخول -->
     <div id="auth-screen" class="screen">
         <div class="auth-container">
             <div class="auth-header">
-                <i class="fab fa-whatsapp" style="color: #00a884; font-size: 55px; margin-bottom: 10px;"></i>
+                <i class="fab fa-whatsapp" style="color: #00a884; font-size: 50px; margin-bottom: 10px;"></i>
                 <h2>مرحباً بك في واتساب</h2>
             </div>
             
@@ -29,57 +28,41 @@
 
             <form id="register-form" class="form-box hidden" onsubmit="handleRegister(event)">
                 <h3>إنشاء حساب جديد</h3>
-                <input type="text" id="reg-username" placeholder="اختر اسم مستخدم فريد" required>
-                <input type="email" id="reg-email" placeholder="البريد الإلكتروني الحقيقي" required>
+                <input type="text" id="reg-username" placeholder="اسم المستخدم الفريد" required>
                 <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
-                <button type="submit">تسجيل وإرسال كود التفعيل</button>
+                <button type="submit">تسجيل الحساب</button>
                 <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()">تسجيل الدخول</span></p>
-            </form>
-
-            <form id="otp-form" class="form-box hidden" onsubmit="handleVerifyOTP(event)">
-                <h3>تفعيل الحساب برقم السري</h3>
-                <p style="font-size: 13px; color: #667781; margin-bottom: 15px;">أرسلنا كوداً من 4 أرقام إلى بريدك الإلكتروني.</p>
-                <input type="text" id="otp-input" placeholder="اكتب كود التفعيل المكون من 4 أرقام" required maxlength="4">
-                <button type="submit">تفعيل الحساب</button>
-                <p><span onclick="cancelOTP()">العودة لتسجيل الدخول</span></p>
             </form>
         </div>
     </div>
 
-    <!-- ================= 2. شاشة الشات الرئيسية ================= -->
+    <!-- واجهة الشات الرئيسية -->
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
             
-            <!-- القائمة الجانبية المحدثة مثل واتساب ويب -->
             <aside class="sidebar">
                 <header class="sidebar-header">
                     <div class="user-profile">
                         <div class="avatar-circle"><i class="fas fa-user"></i></div>
                         <span id="current-user-name" style="font-weight: bold;">المستخدم</span>
                     </div>
-                    <div>
-                        <button onclick="logout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> خروج</button>
-                    </div>
+                    <button onclick="logout()" class="logout-btn">خروج</button>
                 </header>
 
-                <!-- 🔍 شريط البحث الاحترافي الجديد فوق الشاتات مباشرة -->
+                <!-- 🔍 شريط البحث فوق الشاتات -->
                 <div class="search-bar-container">
                     <div class="search-wrapper">
                         <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="search-username" placeholder="ابحث عن شخص باسم المستخدم واضغط Enter..." onkeypress="handleSearch(event)">
+                        <input type="text" id="search-username" placeholder="ابحث عن شخص بالاسم واضغط Enter..." onkeypress="handleSearch(event)">
                     </div>
                 </div>
 
-                <!-- قائمة الشاتات النشطة والمرتبة تلقائياً -->
-                <div class="chats-list" id="chats-list-container">
-                    <!-- الشاتات القديمة والنشطة هتنزل هنا تلقائياً -->
-                </div>
+                <div class="chats-list" id="chats-list-container"></div>
             </aside>
 
-            <!-- منطقة المحادثة المفتوحة -->
             <main class="chat-area">
                 <div id="welcome-chat-view" class="welcome-view">
-                    <i class="fab fa-whatsapp" style="font-size: 80px; color: #ced5d8; margin-bottom: 15px;"></i>
+                    <i class="fab fa-whatsapp" style="font-size: 70px; color: #ced5d8; margin-bottom: 15px;"></i>
                     <h2>واتساب للويب</h2>
                     <p>أرسل واستقبل الرسائل فورياً دون الحاجة لإبقاء هاتفك متصلاً.</p>
                 </div>
@@ -88,15 +71,10 @@
                     <header class="chat-header">
                         <div class="active-user-info">
                             <div class="avatar-circle"><i class="fas fa-user"></i></div>
-                            <div>
-                                <h4 id="active-chat-name">اسم الصديق</h4>
-                                <p id="active-chat-status" style="color: #00a884; font-size: 12px;">متصل الآن</p>
-                            </div>
+                            <h4 id="active-chat-name">اسم الصديق</h4>
                         </div>
                     </header>
-
                     <div class="messages-container" id="messages-box"></div>
-
                     <footer class="chat-footer">
                         <input type="text" id="message-input" placeholder="اكتب رسالة واضغط Enter..." onkeypress="handleSendMessage(event)">
                         <button onclick="sendMessage()" class="send-btn"><i class="fas fa-paper-plane"></i></button>
