@@ -3,45 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyChat</title>
-    <!-- أضفنا ?v=2 لتخطي الكاش تماماً -->
-    <link rel="stylesheet" href="style.css?v=2">
+    <title>Khalid Chat</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <!-- 1. صفحة تسجيل الدخول -->
-    <div id="loginScreen" class="screen">
-        <div class="login-box">
-            <h2>تسجيل الدخول للتطبيق</h2>
-            <input type="text" id="regName" placeholder="أدخل اسمك">
-            <input type="text" id="regPhone" placeholder="أدخل رقم هاتفك">
-            <button onclick="loginOrRegister()">دخول</button>
+    <!-- شاشة تسجيل الدخول -->
+    <div id="login-screen" class="screen">
+        <div class="login-container">
+            <div class="whatsapp-logo">🟢</div>
+            <h2>مرحباً بك في خالد شات</h2>
+            <p>أول تسجيل لك؟ سيتم حفظ الباسورد لحماية حسابك مدى الحياة.</p>
+            <input type="text" id="login-name" placeholder="اكتب اسمك (للتسجيل لأول مرة)">
+            <input type="tel" id="login-phone" placeholder="اكتب رقم موبايلك (مثال: 011...)">
+            <input type="password" id="login-pass" placeholder="اكتب كلمة السر الخاصة بك">
+            <button id="login-btn">دخول / تسجيل جديد</button>
         </div>
     </div>
 
-    <!-- 2. شاشة الشات الرئيسية -->
-    <div id="chatScreen" class="screen" style="display: none;">
-        <div class="header">
-            <h3>My Chat</h3>
-            <span id="userDisplay"></span>
-        </div>
-        
+    <!-- شاشة الشات الرئيسية -->
+    <div id="chat-screen" class="screen hidden">
+        <header class="chat-header">
+            <div class="user-info">
+                <span id="current-user-display"></span>
+            </div>
+            <h2>غرفة المحادثة</h2>
+        </header>
+
         <div class="search-bar">
-            <input type="text" id="phoneSearch" placeholder="ابحث برقم الهاتف...">
-            <button onclick="searchUser()">بحث</button>
+            <input type="tel" id="search-phone" placeholder="ابحث برقم موبايل صاحبك...">
+            <button id="search-btn">بحث</button>
         </div>
 
-        <div id="messages" class="messages-container">
-            <!-- الرسائل تظهر هنا -->
+        <div id="chat-box" class="chat-box">
+            <p class="welcome-msg">ابحث عن صديق لبدء المحادثة السريعة أونلاين...</p>
         </div>
 
         <div class="input-area">
-            <input type="text" id="messageInput" placeholder="اكتب رسالة...">
-            <button onclick="sendMessage()">إرسال</button>
+            <input type="text" id="message-input" placeholder="اكتب رسالتك هنا...">
+            <button id="send-btn">إرسال</button>
         </div>
     </div>
 
-    <!-- أضفنا ?v=2 لتخطي الكاش تماماً -->
-    <script src="app.js?v=2"></script>
+    <script src="app.js"></script>
 </body>
 </html>
