@@ -1,4 +1,3 @@
-
 import http.server
 import json
 import urllib.parse
@@ -61,6 +60,16 @@ def get_messages(user1, user2):
     return messages
 
 class ChatHandler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.end_headers()
+
     def do_POST(self):
         if self.path == "/login":
             content_length = int(self.headers['Content-Length'])
@@ -104,7 +113,6 @@ class ChatHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_response(400)
 
             conn.close()
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
             self.wfile.write(response_msg.encode('utf-8'))
 
@@ -122,7 +130,6 @@ class ChatHandler(http.server.SimpleHTTPRequestHandler):
                 response = "User not found"
                 
             self.send_response(200)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
             self.wfile.write(response.encode('utf-8'))
             return
@@ -140,7 +147,6 @@ class ChatHandler(http.server.SimpleHTTPRequestHandler):
                 response = "Missing data"
                 
             self.send_response(200)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
             self.wfile.write(response.encode('utf-8'))
             return
@@ -154,7 +160,6 @@ class ChatHandler(http.server.SimpleHTTPRequestHandler):
             response = json.dumps(messages)
             
             self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
             self.wfile.write(response.encode('utf-8'))
             return
@@ -163,4 +168,6 @@ class ChatHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8082))
-    http.server.ThreadingHTTPServer(('0.0.0.0', port), ChatHandler).serve_forever()
+    server = http.server.ThreadingHTTPServer(('0.0.0.0', port), ChatHandler)
+    print(f"Server running on port {port}...")
+    server.serve_forever()
