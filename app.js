@@ -190,13 +190,13 @@ function openChat(phone) {
     renderChatsList(); 
 }
 
-// ================= إرسال واستقبل الرسائل =================
+// ================= إرسال واستقبال الرسائل الذكي والمضمون =================
 
 function handleSendMessage(event) {
     if (event.key === "Enter") sendMessage();
 }
 
-function sendMessage() {
+async function sendMessage() {
     const input = document.getElementById("message-input");
     const messageText = input.value.trim();
     if (!messageText || !activeChatUser) return;
@@ -207,12 +207,28 @@ function sendMessage() {
         message: messageText
     };
 
+    // تفريغ الحقل فوراً كشكل جمالي مثل الواتساب
+    input.value = ""; 
+
+    // إذا كان الـ socket متصل، ارسل فورياً لايف
     if (socket && socket.connected) {
         socket.emit("send_message", messageData);
     } else {
-        alert("تنبيه: يتم الإرسال التقليدي، السيرفر الفوري يعيد الاتصال.");
+        // إذا كان معلق، أرسلها كـ HTTP POST للسيرفر وهتوصل وتتحفظ وتظهر عندك فوراً
+        try {
+            const response = await fetch(`${SERVER_URL}/api/send`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(messageData)
+            });
+            const data = await response.json();
+            if (data.status === "success") {
+                handleIncomingMessage(messageData); // عرضها في شاشتك فوراً
+            }
+        } catch (err) {
+            alert("فشل إرسال الرسالة، تأكد من الاتصال");
+        }
     }
-    input.value = ""; 
 }
 
 function handleIncomingMessage(data) {
