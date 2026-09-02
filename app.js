@@ -1,14 +1,12 @@
-
-// 1. ربط السيرفر بـ Railway (لو الواجهة مرفوعة في مكان تاني، استبدل window.location.origin برابط الـ Railway بتاعك)
+// الربط التلقائي بالسيرفر المرفوع مع الواجهة في نفس مشروع Railway
 const SERVER_URL = window.location.origin; 
 const socket = io(SERVER_URL);
 
-// متغيرات لحفظ بيانات المستخدم الحالي والمحادثة النشطة
 let currentUser = null;
 let activeChatUser = null;
-let activeChats = {}; // لحفظ قائمة الأشخاص الذين تواصلت معهم
+let activeChats = {}; 
 
-// عند فتح الصفحة، التأكد من حالة تسجيل الدخول
+// عند تحميل الصفحة، التأكد من حالة تسجيل الدخول السابقة
 document.addEventListener("DOMContentLoaded", () => {
     const savedUser = localStorage.getItem("chat_user");
     if (savedUser) {
@@ -17,15 +15,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// التنقل بين واجهتي تسجيل الدخول وإنشاء الحساب
+// التنقل السلس بين شاشتي تسجيل الدخول والتسجيل
 function toggleAuthForms() {
     document.getElementById("login-form").classList.toggle("hidden");
     document.getElementById("register-form").classList.toggle("hidden");
 }
 
-// ================= إدارة الحسابات (تسجيل الدخول والتسجيل) =================
+// ================= إدارة الحسابات =================
 
-async function handleRegister() {
+async function handleRegister(event) {
+    if (event) event.preventDefault(); // منع الصفحة من إعادة التحميل والتعليق
+
     const username = document.getElementById("reg-name").value.trim();
     const phone = document.getElementById("reg-phone").value.trim();
     const password = document.getElementById("reg-pass").value.trim();
@@ -47,7 +47,9 @@ async function handleRegister() {
     }
 }
 
-async function handleLogin() {
+async function handleLogin(event) {
+    if (event) event.preventDefault(); // منع الصفحة من إعادة التحميل والتعليق
+
     const phone = document.getElementById("login-phone").value.trim();
     const password = document.getElementById("login-pass").value.trim();
 
@@ -74,7 +76,7 @@ function showChatScreen() {
     document.getElementById("chat-screen").classList.remove("hidden");
     document.getElementById("current-user-name").innerText = currentUser.username;
 
-    // ربط المستخدم بغرفته الخاصة عبر الـ Socket لاستقبال الرسائل الفورية
+    // الانضمام لغرفة استقبال الرسائل عبر الـ Socket
     socket.emit("join", { phone: currentUser.phone });
 }
 
@@ -83,7 +85,7 @@ function logout() {
     window.location.reload();
 }
 
-// ================= البحث عن شخص وبدء شات =================
+// ================= البحث وبدء محادثة جديدة =================
 
 async function handleSearch(event) {
     if (event.key !== "Enter") return;
@@ -97,19 +99,17 @@ async function handleSearch(event) {
 
     if (data.status === "success") {
         const searchedUser = data.user;
-        // إضافة الشخص لقائمة الشاتات المؤقتة إذا لم يكن موجوداً
         if (!activeChats[searchedUser.phone]) {
             activeChats[searchedUser.phone] = { username: searchedUser.username, messages: [] };
         }
         renderChatsList();
         openChat(searchedUser.phone);
-        document.getElementById("search-phone").value = ""; // تفريغ خانة البحث
+        document.getElementById("search-phone").value = ""; 
     } else {
         alert(data.message);
     }
 }
 
-// تحديث قائمة المحادثات في القائمة الجانبية (Sidebar)
 function renderChatsList() {
     const container = document.getElementById("chats-list-container");
     container.innerHTML = "";
@@ -139,20 +139,18 @@ function renderChatsList() {
     });
 }
 
-// فتح محادثة شخص معين
 function openChat(phone) {
     activeChatUser = { phone: phone, username: activeChats[phone].username };
     
     document.getElementById("welcome-chat-view").classList.add("hidden");
     document.getElementById("active-chat-view").classList.remove("hidden");
-    
     document.getElementById("active-chat-name").innerText = activeChatUser.username;
     
     renderMessages();
-    renderChatsList(); // لتحديث الخلفية النشطة للـ item
+    renderChatsList(); 
 }
 
-// ================= إرسال واستقبال الرسائل الفورية =================
+// ================= إرسال واستقبال الرسائل =================
 
 function handleSendMessage(event) {
     if (event.key === "Enter") sendMessage();
@@ -169,26 +167,20 @@ function sendMessage() {
         message: messageText
     };
 
-    // إرسال الرسالة للسيرفر عبر الـ Socket
     socket.emit("send_message", messageData);
-    input.value = ""; // تفريغ صندوق الإدخال
+    input.value = ""; 
 }
 
-// استقبال الرسائل من السيرفر فوراً
 socket.on("receive_message", (data) => {
-    // تحديد مع مين المحادثة (الطرف الآخر)
     const partnerPhone = data.sender_phone === currentUser.phone ? data.receiver_phone : data.sender_phone;
-    const partnerName = data.sender_phone === currentUser.phone ? activeChatUser.username : "مستخدم"; // سيتم تحديث الاسم الفعلي عند البحث
+    const partnerName = data.sender_phone === currentUser.phone ? activeChatUser.username : "مستخدم"; 
 
-    // إذا لم تكن المحادثة مسجلة في القائمة الجانبية، يتم إنشاؤها
     if (!activeChats[partnerPhone]) {
         activeChats[partnerPhone] = { username: partnerName, messages: [] };
     }
 
-    // حفظ الرسالة في الذاكرة المؤقتة للمتصفح
     activeChats[partnerPhone].messages.push(data);
 
-    // إذا كنا فاتحين شات هذا الشخص حالياً، نعرض الرسالة فوراً
     if (activeChatUser && activeChatUser.phone === partnerPhone) {
         renderMessages();
     }
@@ -196,7 +188,6 @@ socket.on("receive_message", (data) => {
     renderChatsList();
 });
 
-// عرض الرسائل داخل صندوق المحادثة المفتوحة
 function renderMessages() {
     const box = document.getElementById("messages-box");
     box.innerHTML = "";
@@ -212,6 +203,5 @@ function renderMessages() {
         box.appendChild(bubble);
     });
 
-    // عمل سكرول تلقائي لأسفل الصندوق عند وصول رسالة جديدة
     box.scrollTop = box.scrollHeight;
 }
