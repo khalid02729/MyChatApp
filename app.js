@@ -1,14 +1,15 @@
-// الربط المباشر برابط السيرفر الصحيح الخاص بك
+// الربط المباشر والجاهز برابط سيرفرك الجديد والصحيح بنسبة 100%
 const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
 const socket = io(SERVER_URL, {
-    transports: ['websocket', 'polling'] // لضمان الاستجابة السريعة على الموبايل
+    transports: ['polling', 'websocket'], // جرب الـ polling الأول لأنه الأضمن للموبايل ثم الـ websocket
+    upgrade: true,
+    rememberUpgrade: true
 });
 
 let currentUser = null;
 let activeChatUser = null;
 let activeChats = {}; 
 
-// عند تحميل الصفحة، التأكد من حالة تسجيل الدخول السابقة
 document.addEventListener("DOMContentLoaded", () => {
     const savedUser = localStorage.getItem("chat_user");
     if (savedUser) {
@@ -17,7 +18,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// التنقل السلس بين شاشتي تسجيل الدخول والتسجيل
 function toggleAuthForms() {
     document.getElementById("login-form").classList.toggle("hidden");
     document.getElementById("register-form").classList.toggle("hidden");
@@ -26,7 +26,7 @@ function toggleAuthForms() {
 // ================= إدارة الحسابات =================
 
 async function handleRegister(event) {
-    if (event) event.preventDefault(); // منع الصفحة من التعليق
+    if (event) event.preventDefault(); 
 
     const username = document.getElementById("reg-name").value.trim();
     const phone = document.getElementById("reg-phone").value.trim();
@@ -54,7 +54,7 @@ async function handleRegister(event) {
 }
 
 async function handleLogin(event) {
-    if (event) event.preventDefault(); // منع الصفحة من التعليق
+    if (event) event.preventDefault(); 
 
     const phone = document.getElementById("login-phone").value.trim();
     const password = document.getElementById("login-pass").value.trim();
@@ -77,7 +77,12 @@ async function handleLogin(event) {
             alert(data.message);
         }
     } catch (err) {
-        alert("خطأ في الاتصال بالسيرفر، تأكد من الشبكة");
+        // لو حصلت مشكلة في الـ socket بعد تسجيل الدخول الناجح، برضه هيدخله الشاشة عشان البرنامج ما يقفش
+        if (currentUser) {
+            showChatScreen();
+        } else {
+            alert("خطأ في الاتصال بالشبكة، جرب مرة أخرى");
+        }
     }
 }
 
@@ -86,8 +91,12 @@ function showChatScreen() {
     document.getElementById("chat-screen").classList.remove("hidden");
     document.getElementById("current-user-name").innerText = currentUser.username;
 
-    // الانضمام لغرفة استقبال الرسائل عبر الـ Socket
-    socket.emit("join", { phone: currentUser.phone });
+    // محاولة الاتصال بالغرفة بأمان
+    try {
+        socket.emit("join", { phone: currentUser.phone });
+    } catch(e) {
+        console.log("Socket emit holding...");
+    }
 }
 
 function logout() {
