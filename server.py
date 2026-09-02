@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
@@ -15,13 +16,15 @@ class ProfessionalHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         # مسار فحص حالة السيرفر
         if self.path == "/api/status":
-            self.send_json_response(HTTPStatus.OK, {"status": "running", "port": 8082})
+            # جلب رقم البورت الحالي ديناميكياً
+            current_port = int(os.environ.get("PORT", 8082))
+            self.send_json_response(HTTPStatus.OK, {"status": "running", "port": current_port})
             return
         
-        # السلوك الافتراضي لخدمة الملفات الثابتة (مثل index.html إن وُجد)
+        # السلوك الافتراضي لخدمة الملفات الثابتة
         return super().do_GET()
 
-    # معالجة طلبات POST (في حال أردت استقبال بيانات)
+    # معالجة طلبات POST
     def do_POST(self):
         if self.path == "/api/data":
             content_length = int(self.headers['Content-Length'])
@@ -34,28 +37,29 @@ class ProfessionalHandler(SimpleHTTPRequestHandler):
             
         self.send_json_response(HTTPStatus.NOT_FOUND, {"error": "Endpoint not found"})
 
-    # دالة مساعدة لإرسال استجابات JSON بشكل منظم
+    # دالة مساعدة لإرسال استجابات JSON
     def send_json_response(self, status_code, data):
-        import json
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        # السماح بطلب البيانات من جافا سكريبت (CORS)
+        # السماح بطلب البيانات (CORS) وهو مهم جداً لاتصال تطبيق الموبايل
         self.send_header("Access-Control-Allow-Origin", "*") 
         self.end_headers()
         response_bytes = json.dumps(data).encode('utf-8')
         self.wfile.write(response_bytes)
 
-    # توجيه سجلات السيرفر إلى نظام الـ logging الأساسي
+    # توجيه سجلات السيرفر
     def log_message(self, format, *args):
         logging.info(f"{self.client_address[0]} - {format % args}")
 
 def run():
-    # المنفذ الافتراضي أصبح 8082 الآن
-    port = int(os.getenv("PORT", 8082))
-    server_address = ("", port)
+    # قراءة المنفذ ديناميكياً من بيئة تشغيل Railway
+    port = int(os.environ.get("PORT", 8082))
+    
+    # التعديل الأساسي هنا: ربط السيرفر بـ "0.0.0.0" لفتح الاتصال الخارجي
+    server_address = ("0.0.0.0", port)
     
     httpd = HTTPServer(server_address, ProfessionalHandler)
-    logging.info(f"🚀 Server is running on http://localhost:{port}")
+    logging.info(f"🚀 Server is running publicly on port: {port}")
     
     try:
         httpd.serve_forever()
