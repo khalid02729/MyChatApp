@@ -6,6 +6,7 @@ let currentUser = null;
 let activeChatUser = null;
 let activeChats = {}; 
 
+// عند تحميل الصفحة، التأكد من حالة تسجيل الدخول السابقة
 document.addEventListener("DOMContentLoaded", () => {
     const savedUser = localStorage.getItem("chat_user");
     if (savedUser) {
@@ -77,24 +78,39 @@ function showChatScreen() {
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("chat-screen").classList.remove("hidden");
     document.getElementById("current-user-name").innerText = currentUser.username;
-    setTimeout(initSocketConnection, 1000);
     
-    // تشغيل جلب تلقائي للرسائل كل 3 ثواني كدعم إضافي لضمان وصول الرسايل للطرفين فوراً
-    setInterval(fetchActiveChatMessages, 3000);
+    // تشغيل الـ Socket فوراً للدخول في وضع الاستعداد واستقبال الرسائل 24 ساعة لايف
+    initSocketConnection();
 }
 
 function initSocketConnection() {
     if (typeof io === 'undefined') return;
+    
     try {
-        socket = io(SERVER_URL, { transports: ['polling', 'websocket'] });
+        // اتصال متقدم يعيد بناء نفسه تلقائياً في الخلفية كل ما النت يقطع أو يضعف
+        socket = io(SERVER_URL, { 
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000
+        });
+
         socket.on("connect", () => {
+            console.log("Connected to Realtime Server!");
             socket.emit("join", { phone: currentUser.phone });
         });
+
         socket.on("receive_message", (data) => {
             handleIncomingMessage(data);
         });
+
+        socket.on("disconnect", () => {
+            console.log("Disconnected from server, trying to reconnect...");
+        });
     } catch (e) {
-        console.log("Socket connection backup waiting...");
+        console.error("Socket error init:", e);
     }
 }
 
@@ -126,7 +142,7 @@ async function handleSearch(event) {
             alert(data.message);
         }
     } catch (err) {
-        alert("خطأ أثناء البحث");
+        alert("خطأ أثناء البحث عن الرقم");
     }
 }
 
@@ -155,10 +171,10 @@ function openChat(phone) {
     document.getElementById("welcome-chat-view").classList.add("hidden");
     document.getElementById("active-chat-view").classList.remove("hidden");
     document.getElementById("active-chat-name").innerText = activeChatUser.username;
+    
     fetchActiveChatMessages();
 }
 
-// جلب وتحديث الرسائل من السيرفر بشكل مضمون للطرفين
 async function fetchActiveChatMessages() {
     if (!activeChatUser) return;
     try {
@@ -167,17 +183,17 @@ async function fetchActiveChatMessages() {
         activeChats[activeChatUser.phone].messages = messages;
         renderMessages();
     } catch (err) {
-        console.log("Error syncing messages...");
+        console.log("Error syncing messages history");
     }
 }
 
-// ================= إرسال وعرض الرسائل =================
+// ================= إرسال فوري لايف =================
 
 function handleSendMessage(event) {
     if (event.key === "Enter") sendMessage();
 }
 
-async function sendMessage() {
+function sendMessage() {
     const input = document.getElementById("message-input");
     const messageText = input.value.trim();
     if (!messageText || !activeChatUser) return;
@@ -190,24 +206,27 @@ async function sendMessage() {
 
     input.value = ""; 
 
-    try {
-        // إرسال للسيرفر عبر الـ API لضمان الحفظ الفوري وقرأتها عند الطرفين
-        await fetch(`${SERVER_URL}/api/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(messageData)
-        });
-        fetchActiveChatMessages(); // تحديث الشاشة فوراً بعد الإرسال
-    } catch (err) {
-        alert("فشل إرسال الرسالة");
+    if (socket && socket.connected) {
+        socket.emit("send_message", messageData);
+    } else {
+        alert("جاري إعادة الاتصال بالسيرفر الفوري.. انتظر ثواني وأعد الإرسال");
     }
 }
 
 function handleIncomingMessage(data) {
     const partnerPhone = data.sender_phone === currentUser.phone ? data.receiver_phone : data.sender_phone;
-    if (activeChatUser && activeChatUser.phone === partnerPhone) {
-        fetchActiveChatMessages();
+    const partnerName = data.sender_phone === currentUser.phone ? activeChatUser.username : "مستخدم";
+
+    if (!activeChats[partnerPhone]) {
+        activeChats[partnerPhone] = { username: partnerName, messages: [] };
     }
+
+    activeChats[partnerPhone].messages.push(data);
+
+    if (activeChatUser && activeChatUser.phone === partnerPhone) {
+        renderMessages();
+    }
+    renderChatsList();
 }
 
 function renderMessages() {
@@ -220,11 +239,9 @@ function renderMessages() {
         const isMe = msg.sender_phone === currentUser.phone;
         const bubble = document.createElement("div");
         
-        // تفريق الاتجاهات والألوان
         bubble.className = `msg-bubble ${isMe ? 'sent' : 'received'}`;
         bubble.innerText = msg.message;
         box.appendChild(bubble);
     });
-    box.scrollTop = box.scrollHeight;
+    box.scrollTop = box.scrollHeight; 
 }
-
