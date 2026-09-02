@@ -24,7 +24,7 @@
                 <h3>تسجيل الدخول</h3>
                 <input type="tel" id="login-phone" placeholder="رقم الهاتف" required>
                 <input type="password" id="login-pass" placeholder="كلمة المرور" required>
-                <button onclick="handleLogin()">دخول</button>
+                <button type="button" onclick="handleLogin()">دخول</button>
                 <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()">إنشاء حساب جديد</span></p>
             </div>
 
@@ -34,7 +34,7 @@
                 <input type="text" id="reg-name" placeholder="الاسم المستعار" required>
                 <input type="tel" id="reg-phone" placeholder="رقم الهاتف" required>
                 <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
-                <button onclick="handleRegister()">تسجيل</button>
+                <button type="button" onclick="handleRegister()">تسجيل</button>
                 <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()">تسجيل الدخول</span></p>
             </div>
         </div>
@@ -44,9 +44,7 @@
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
             
-            <!-- القائمة الجانبية (شمال أو يمين حسب الاتجاه) -->
             <aside class="sidebar">
-                <!-- الرأس وفيه معلومات المستخدم الحالي -->
                 <header class="sidebar-header">
                     <div class="user-profile">
                         <div class="avatar"><i class="fas fa-user"></i></div>
@@ -58,7 +56,6 @@
                     </div>
                 </header>
 
-                <!-- خانة البحث عن شخص بالرقم -->
                 <div class="search-bar-container">
                     <div class="search-input-wrapper">
                         <i class="fas fa-search search-icon"></i>
@@ -66,23 +63,18 @@
                     </div>
                 </div>
 
-                <!-- قائمة الشاتات النشطة -->
                 <div class="chats-list" id="chats-list-container">
-                    <!-- الشاتات هتظهر هنا تلقائياً عبر الـ JS -->
                     <div class="no-chats">لا توجد محادثات الحالية. ابحث عن رقم لبدء دردشة!</div>
                 </div>
             </aside>
 
-            <!-- منطقة المحادثة المفتوحة -->
             <main class="chat-area">
-                <!-- واجهة الترحيب الافتراضية قبل اختيار أي شات -->
                 <div id="welcome-chat-view" class="welcome-view">
                     <i class="fab fa-whatsapp"></i>
                     <h2>واتساب للويب</h2>
                     <p>أرسل واستقبل الرسائل فورياً دون الحاجة لإبقاء هاتفك متصلاً.</p>
                 </div>
 
-                <!-- واجهة الشات النشط -->
                 <div id="active-chat-view" class="active-view hidden">
                     <header class="chat-header">
                         <div class="active-user-info">
@@ -98,23 +90,19 @@
                         </div>
                     </header>
 
-                    <!-- صندوق الرسائل -->
-                    <div class="messages-container" id="messages-box">
-                        <!-- الرسائل بتنزل هنا -->
-                    </div>
+                    <div class="messages-container" id="messages-box"></div>
 
-                    <!-- شريط إدخال الرسالة السفلي -->
                     <footer class="chat-footer">
                         <i class="far fa-smile icon-btn"></i>
                         <input type="text" id="message-input" placeholder="اكتب رسالة..." onkeypress="handleSendMessage(event)">
                         <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
                     </footer>
                 </div>
-
             </main>
-
         </div>
     </div>
 
+    <!-- استدعاء ملف الـ JS في النهاية خالص وبخاصية defer لتجنب التجميد -->
+    <script src="app.js" defer></script>
 </body>
 </html>
