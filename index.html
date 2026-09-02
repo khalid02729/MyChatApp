@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyChat</title>
+    <!-- أضفنا ?v=2 لتخطي الكاش تماماً -->
+    <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+
+    <!-- 1. صفحة تسجيل الدخول -->
+    <div id="loginScreen" class="screen">
+        <div class="login-box">
+            <h2>تسجيل الدخول للتطبيق</h2>
+            <input type="text" id="regName" placeholder="أدخل اسمك">
+            <input type="text" id="regPhone" placeholder="أدخل رقم هاتفك">
+            <button onclick="loginOrRegister()">دخول</button>
+        </div>
+    </div>
+
+    <!-- 2. شاشة الشات الرئيسية -->
+    <div id="chatScreen" class="screen" style="display: none;">
+        <div class="header">
+            <h3>My Chat</h3>
+            <span id="userDisplay"></span>
+        </div>
+        
+        <div class="search-bar">
+            <input type="text" id="phoneSearch" placeholder="ابحث برقم الهاتف...">
+            <button onclick="searchUser()">بحث</button>
+        </div>
+
+        <div id="messages" class="messages-container">
+            <!-- الرسائل تظهر هنا -->
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="اكتب رسالة...">
+            <button onclick="sendMessage()">إرسال</button>
+        </div>
+    </div>
+
+    <!-- أضفنا ?v=2 لتخطي الكاش تماماً -->
+    <script src="app.js?v=2"></script>
+</body>
+</html>
