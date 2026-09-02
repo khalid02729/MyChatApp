@@ -88,6 +88,9 @@ class ChatHandler(SimpleHTTPRequestHandler):
 
         return super().do_GET()
 
-server = ThreadingHTTPServer(("0.0.0.0", PORT), ChatHandler)
-print(f"Server running on port {PORT}...")
-server.serve_forever()
+    import os
+    port = int(os.environ.get('PORT', 8082))
+    server = ThreadingHTTPServer(('0.0.0.0', port), ChatHandler)
+    print(f"Server running on port {port}...")
+    server.serve_forever()
+    
