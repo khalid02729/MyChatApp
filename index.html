@@ -1,102 +1,120 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Khalid Chat | خالد شات</title>
+    <title>واتساب كول</title>
     <link rel="stylesheet" href="style.css">
-    <!-- استدعاء أيقونات شيك ومودرن -->
+    <!-- مكتبة الأيقونات ومكتبة الـ Socket.io -->
     <link rel="stylesheet" href="https://cloudflare.com">
+    <script src="https://socket.io"></script>
 </head>
 <body>
 
-    <!-- 1️⃣ شاشة تسجيل الدخول والترحيب -->
-    <div id="login-screen" class="main-screen">
-        <div class="login-card animate-fade-in">
-            <div class="brand-header">
-                <div class="brand-logo">
-                    <i class="fa-solid fa-comments-text animate-pulse"></i>
-                    <span class="online-dot"></span>
-                </div>
-                <h2>خالد شات</h2>
-                <p>تواصل سريع • أمان كامل • تشفير سحابي</p>
+    <!-- ================= 1. شاشة تسجيل الدخول ================= -->
+    <div id="auth-screen" class="screen">
+        <div class="auth-container">
+            <div class="auth-header">
+                <i class="fab fa-whatsapp whatsapp-logo"></i>
+                <h2>مرحباً بك في واتساب</h2>
             </div>
             
-            <div class="form-group">
-                <div class="input-wrapper">
-                    <i class="fa-solid fa-user"></i>
-                    <input type="text" id="login-name" placeholder="الاسم الكامل (للتسجيل أول مرة)">
-                </div>
-                
-                <div class="input-wrapper">
-                    <i class="fa-solid fa-phone"></i>
-                    <input type="tel" id="login-phone" placeholder="رقم الموبايل">
-                </div>
-                
-                <div class="input-wrapper">
-                    <i class="fa-solid fa-lock"></i>
-                    <input type="password" id="login-pass" placeholder="كلمة السر الخاصة بك">
-                </div>
-                
-                <button id="login-btn" class="primary-btn">
-                    <span>دخول / إنشاء حساب</span>
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
-                </button>
+            <!-- نموذج الدخول -->
+            <div id="login-form" class="form-box">
+                <h3>تسجيل الدخول</h3>
+                <input type="tel" id="login-phone" placeholder="رقم الهاتف" required>
+                <input type="password" id="login-pass" placeholder="كلمة المرور" required>
+                <button onclick="handleLogin()">دخول</button>
+                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()">إنشاء حساب جديد</span></p>
             </div>
-            <div class="login-footer">
-                <p><i class="fa-solid fa-shield-halved"></i> حسابك محمي بكلمة السر مدى الحياة</p>
+
+            <!-- نموذج التسجيل -->
+            <div id="register-form" class="form-box hidden">
+                <h3>إنشاء حساب جديد</h3>
+                <input type="text" id="reg-name" placeholder="الاسم المستعار" required>
+                <input type="tel" id="reg-phone" placeholder="رقم الهاتف" required>
+                <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
+                <button onclick="handleRegister()">تسجيل</button>
+                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()">تسجيل الدخول</span></p>
             </div>
         </div>
     </div>
 
-    <!-- 2️⃣ شاشة الشات الرئيسية الفخمة -->
-    <div id="chat-screen" class="main-screen" style="display: none;">
-        <div class="chat-container">
-            <!-- الهيدر العالي -->
-            <header class="main-header">
-                
-                    <div class="mini-logo">🚀</div>
-                    
-                        <h3>غرفة المحادثة</h3>
-                        <span id="current-user-display" class="user-tag">---</span>
+    <!-- ================= 2. شاشة الشات الرئيسية ================= -->
+    <div id="chat-screen" class="screen hidden">
+        <div class="chat-app-container">
+            
+            <!-- القائمة الجانبية (شمال أو يمين حسب الاتجاه) -->
+            <aside class="sidebar">
+                <!-- الرأس وفيه معلومات المستخدم الحالي -->
+                <header class="sidebar-header">
+                    <div class="user-profile">
+                        <div class="avatar"><i class="fas fa-user"></i></div>
+                        <span id="current-user-name">المستخدم</span>
+                    </div>
+                    <div class="header-icons">
+                        <i class="fas fa-comment-alt"></i>
+                        <i class="fas fa-ellipsis-v" onclick="logout()"></i>
+                    </div>
+                </header>
+
+                <!-- خانة البحث عن شخص بالرقم -->
+                <div class="search-bar-container">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="tel" id="search-phone" placeholder="ابحث عن شخص برقم الهاتف..." onkeypress="handleSearch(event)">
                     </div>
                 </div>
-                <div class="header-actions">
-                    <button id="logout-btn" title="تسجيل الخروج"><i class="fa-solid fa-power-off"></i></button>
-                </div>
-            </header>
 
-            <!-- بار البحث المودرن -->
-            <div class="search-section">
-                <div class="search-wrapper">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="tel" id="search-phone" placeholder="ابحث برقم موبايل صديقك لبدء الدردشة...">
+                <!-- قائمة الشاتات النشطة -->
+                <div class="chats-list" id="chats-list-container">
+                    <!-- الشاتات هتظهر هنا تلقائياً عبر الـ JS -->
+                    <div class="no-chats">لا توجد محادثات الحالية. ابحث عن رقم لبدء دردشة!</div>
                 </div>
-                <button id="search-btn" class="search-action-btn">بحث</button>
-            </div>
+            </aside>
 
-            <!-- صندوق الرسائل الانسيابي -->
-            <div id="chat-box" class="messages-viewport">
-                <div class="empty-state animate-fade-in">
-                    <div class="empty-icon"><i class="fa-regular fa-comments"></i></div>
-                    <h4>ابدأ حكاية جديدة الحين!</h4>
-                    <p>اكتب رقم موبايل صاحبك فوق في خانة البحث، واضغط بحث عشان تفتح المحادثة الفورية معاه أونلاين.</p>
+            <!-- منطقة المحادثة المفتوحة -->
+            <main class="chat-area">
+                <!-- واجهة الترحيب الافتراضية قبل اختيار أي شات -->
+                <div id="welcome-chat-view" class="welcome-view">
+                    <i class="fab fa-whatsapp"></i>
+                    <h2>واتساب للويب</h2>
+                    <p>أرسل واستقبل الرسائل فورياً دون الحاجة لإبقاء هاتفك متصلاً.</p>
                 </div>
-            </div>
 
-            <!-- منطقة الكتابة والإرسال الشيك -->
-            <div class="control-input-area">
-                <div class="chat-input-wrapper">
-                    <input type="text" id="message-input" placeholder="اكتب رسالة شيك هنا..." disabled>
-                    <button id="send-btn" class="send-action-btn" disabled>
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
+                <!-- واجهة الشات النشط -->
+                <div id="active-chat-view" class="active-view hidden">
+                    <header class="chat-header">
+                        <div class="active-user-info">
+                            <div class="avatar"><i class="fas fa-user"></i></div>
+                            <div>
+                                <h4 id="active-chat-name">اسم الصديق</h4>
+                                <p id="active-chat-status">متصل</p>
+                            </div>
+                        </div>
+                        <div class="chat-header-icons">
+                            <i class="fas fa-search"></i>
+                            <i class="fas fa-paperclip"></i>
+                        </div>
+                    </header>
+
+                    <!-- صندوق الرسائل -->
+                    <div class="messages-container" id="messages-box">
+                        <!-- الرسائل بتنزل هنا -->
+                    </div>
+
+                    <!-- شريط إدخال الرسالة السفلي -->
+                    <footer class="chat-footer">
+                        <i class="far fa-smile icon-btn"></i>
+                        <input type="text" id="message-input" placeholder="اكتب رسالة..." onkeypress="handleSendMessage(event)">
+                        <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                    </footer>
                 </div>
-            </div>
+
+            </main>
+
         </div>
     </div>
 
-    <script src="app.js"></script>
 </body>
 </html>
