@@ -1,4 +1,3 @@
-
 import os
 import sqlite3
 from flask import Flask, render_template, request
@@ -27,7 +26,7 @@ def init_db():
         )
     ''')
     
-    # جدول الرسائل (مع دعم عمود معرف الحذف لـ "حذف لدي")
+    # جدول الرسائل
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS messages (
             msg_id TEXT PRIMARY KEY,
@@ -56,7 +55,7 @@ def init_db():
 init_db()
 
 # ==========================================
-# 🔌 2. منطق الاتصال وفتح الغرف السحرية لكل مستخدم
+# 🔌 2. منطق الاتصال وفتح الغرف السحرية
 # ==========================================
 @socketio.on('login_request')
 def handle_login(data):
@@ -70,7 +69,7 @@ def handle_login(data):
     conn.close()
     
     if row and row[0] == password:
-        join_room(username) # فتح غرفة خاصة بالمستحدم لاستقبال الرسائل الفورية
+        join_room(username) # فتح غرفة خاصة بالمستخدم لاستقبال الرسائل الفورية
         emit('login_success', {'username': username})
     else:
         emit('login_error', '❌ اسم المستخدم أو كلمة المرور غير صحيحة!')
@@ -96,7 +95,7 @@ def handle_register(data):
         conn.close()
 
 # ==========================================
-# 💬 3. منطق إرسال وجلب أرشيف الرسائل (الحية)
+# 💬 3. منطق إرسال وجلب أرشيف الرسائل
 # ==========================================
 @socketio.on('new_private_message')
 def handle_new_message(data):
@@ -106,7 +105,6 @@ def handle_new_message(data):
     message = data.get('message')
     time = data.get('time')
     
-    # حفظ الرسالة في قاعدة البيانات
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute('INSERT INTO messages (msg_id, sender, receiver, message, time) VALUES (?, ?, ?, ?, ?)',
@@ -114,7 +112,7 @@ def handle_new_message(data):
     conn.commit()
     conn.close()
     
-    # إرسال الرسالة فوراً لغرفة الطرف الآخر المستهدف في الوقت الحقيقي
+    # إرسال الرسالة فوراً لغرفة الطرف الآخر في الوقت الحقيقي
     emit('receive_private_message', data, room=receiver)
 
 @socketio.on('load_chat_history')
@@ -124,9 +122,8 @@ def handle_load_history(data):
     
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    # جلب الرسائل التي لم يتم حذفها محلياً من قبل هذا المستخدم (حذف لدي)
     cursor.execute('''
-        SELECT msg_id, sender, receiver, message, time, deleted_by_sender, deleted_by_receiver 
+        SELECT msg_id, sender, receiver, message, time 
         FROM messages 
         WHERE ((sender = ? AND receiver = ? AND deleted_by_sender = 0)
            OR (sender = ? AND receiver = ? AND deleted_by_receiver = 0))
@@ -136,9 +133,7 @@ def handle_load_history(data):
     rows = cursor.fetchall()
     conn.close()
     
-    # إرسال التاريخ بالكامل للشخص اللي طلبه
     for row in rows:
-        msg_type = 'sent' if row[1] == user else 'received'
         emit('receive_private_message', {
             'id': row[0],
             'sender': row[1],
@@ -148,7 +143,7 @@ def handle_load_history(data):
         })
 
 # ==========================================
-# 🗑️ 4. الميزة المنتظرة: حذف الرسائل (لدي ولدى الجميع)
+# 🗑️ 4. حذف الرسائل (لدي ولدى الجميع)
 # ==========================================
 @socketio.on('delete_message_for_me')
 def handle_delete_for_me(data):
@@ -157,11 +152,8 @@ def handle_delete_for_me(data):
     
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
-    # التشييك هل المستخدم هو المرسل أم المستقبل لتحديث العمود الصحيح
     cursor.execute('UPDATE messages SET deleted_by_sender = 1 WHERE msg_id = ? AND sender = ?', (msg_id, user))
     cursor.execute('UPDATE messages SET deleted_by_receiver = 1 WHERE msg_id = ? AND receiver = ?', (msg_id, user))
-    
     conn.commit()
     conn.close()
 
@@ -173,12 +165,10 @@ def handle_delete_for_everyone(data):
     
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    # تحديث نص الرسالة في قاعدة البيانات بشكل نهائي
     cursor.execute('UPDATE messages SET message = "🚫 تم حذف هذه الرسالة" WHERE msg_id = ? AND sender = ?', (msg_id, sender))
     conn.commit()
     conn.close()
     
-    # بث إشارة الحذف الفوري للطرفين عشان يختفي النص في نفس اللحظة
     emit('message_deleted_for_everyone', {'msg_id': msg_id}, room=sender)
     emit('message_deleted_for_everyone', {'msg_id': msg_id}, room=receiver)
 
@@ -196,7 +186,6 @@ def handle_new_story(data):
     conn.commit()
     conn.close()
     
-    # إعادة تحديث القائمة لكل المتصلين برؤية الاستوري الجديد
     handle_get_chats_and_stories({'username': username})
 
 @socketio.on('get_chats_and_stories')
@@ -205,8 +194,6 @@ def handle_get_chats_and_stories(data):
     
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    
-    # جلب آخر رسالة لكل محادثة تظهر في الـ Sidebar الجانبي
     cursor.execute('''
         SELECT DISTINCT 
             CASE WHEN sender = ? THEN receiver ELSE sender END as chat_partner
@@ -233,11 +220,12 @@ def handle_get_chats_and_stories(data):
         })
         
     conn.close()
-    
-    # إرسال التحديث للواجهة الجانبية للمستخدم
     emit('update_chats_and_stories_view', {'chats': chats_list}, room=username)
 
-# تشغيل السيرفر الأساسي
+# ==========================================
+# 🚀 6. أمر التشغيل السحري المظبوط لـ Railway
+# ==========================================
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    # هنا تم إضافة allow_unsafe_werkzeug لمنع الكراش نهائياً وقفل الـ debug للإنتاج
+    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
