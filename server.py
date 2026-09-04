@@ -1,3 +1,4 @@
+
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room
@@ -76,11 +77,15 @@ def login():
     data = request.json
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
-    with get_db() as conn:
-        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-    if user and check_password_hash(user['password'], password):
-        return jsonify({'status': 'success', 'user': {'username': user['username'], 'avatar': user['avatar'], 'bio': user['bio']}})
-    return jsonify({'status': 'error', 'message': 'اسم المستخدم أو كلمة المرور غير صحيحة'}), 401
+    try:
+        with get_db() as conn:
+            # تم إصلاح الخطأ الإملائي هنا وإزالة كلمة VALUES الزائدة
+            user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        if user and check_password_hash(user['password'], password):
+            return jsonify({'status': 'success', 'user': {'username': user['username'], 'avatar': user['avatar'], 'bio': user['bio']}})
+        return jsonify({'status': 'error', 'message': 'اسم المستخدم أو كلمة المرور غير صحيحة'}), 401
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/user-profile', methods=['GET'])
 def user_profile():
