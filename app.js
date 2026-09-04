@@ -1,213 +1,76 @@
-// الرابط المباشر الصحيح والجاهز لسيرفرك أنت بنسبة 100%
-const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
-let socket = null; 
+let myP='', myName='', myEmail='', targetP='', targetN='', targetE='', sync=null;
 
-let currentUser = null;
-let activeChatUser = null;
-let activeChats = {}; 
+document.getElementById('to-r').addEventListener('click', ()=>{ document.getElementById('login-view').classList.add('hidden'); document.getElementById('register-view').classList.remove('hidden'); });
+document.getElementById('to-l').addEventListener('click', ()=>{ document.getElementById('register-view').classList.add('hidden'); document.getElementById('login-view').classList.remove('hidden'); });
 
-document.addEventListener("DOMContentLoaded", () => {
-    const savedUser = localStorage.getItem("chat_user");
-    if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        showChatScreen();
-    }
+document.getElementById('b-login').addEventListener('click', async()=>{
+    const p=document.getElementById('l-phone').value.trim(), o=document.getElementById('l-pass').value.trim(); 
+    if(!p||!o) { alert('اكتب الرقم والباسورد!'); return; }
+    const fd=new URLSearchParams(); fd.append('phone',p); fd.append('password',o);
+    try {
+        const res=await fetch('/login',{method:'POST',body:fd}); const txt=await res.text();
+        if(res.status===200){ myP=p; myName=txt.split(':')[1] || p; myEmail=txt.split(':')[2] || '---'; enter(); } else { alert(txt); }
+    } catch(e) { alert('خطأ في الاتصال بالسيرفر!'); }
 });
 
-function toggleAuthForms() {
-    document.getElementById("login-form").classList.toggle("hidden");
-    document.getElementById("register-form").classList.toggle("hidden");
-}
-
-// ================= إدارة الحسابات =================
-
-async function handleRegister(event) {
-    if (event) event.preventDefault(); 
-    const username = document.getElementById("reg-username").value.trim();
-    const password = document.getElementById("reg-pass").value.trim();
-
-    if (!username || !password) return alert("برجاء ملء جميع الحقول");
-
+document.getElementById('b-reg').addEventListener('click', async()=>{
+    const n=document.getElementById('r-name').value.trim(), e=document.getElementById('r-email').value.trim(), p=document.getElementById('r-phone').value.trim(), o=document.getElementById('r-pass').value.trim(); 
+    if(!n||!p||!o) { alert('املأ البيانات المطلوبة!'); return; }
+    const fd=new URLSearchParams(); fd.append('name',n); fd.append('phone',p); fd.append('password',o); fd.append('email',e);
     try {
-        const response = await fetch(`${SERVER_URL}/api/register`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password })
-        });
-        const data = await response.json();
-        if (data.status === "success") {
-            alert(data.message);
-            toggleAuthForms();
-        } else {
-            alert(data.message);
-        }
-    } catch (err) {
-        alert("مشكلة في الاتصال بالسيرفر");
-    }
+        const res=await fetch('/login',{method:'POST',body:fd}); const txt=await res.text();
+        if(res.status===200){ myP=p; myName=n; myEmail=e||'---'; alert('تم حفظ حسابك وتأمينه!'); enter(); } else { alert(txt); }
+    } catch(e) { alert('خطأ في الاتصال بالسيرفر!'); }
+});
+
+function enter(){ 
+    document.getElementById('login-view').classList.add('hidden'); 
+    document.getElementById('register-view').classList.add('hidden'); 
+    document.getElementById('main-view').style.display='flex'; 
+    document.getElementById('main-view').classList.remove('hidden'); 
+    loadStatuses(); 
+    setInterval(loadStatuses, 5000); 
 }
 
-async function handleLogin(event) {
-    if (event) event.preventDefault(); 
-    const username = document.getElementById("login-username").value.trim();
-    const password = document.getElementById("login-pass").value.trim();
+document.getElementById('b-find').addEventListener('click', async()=>{
+    const p=document.getElementById('f-phone').value.trim(); if(!p || p===myP) return;
+    const res=await fetch('/search?phone='+p); const t=await res.text();
+    if(t.startsWith('Found:')){ 
+        targetP=p; targetN=t.split(':')[1]; targetE=t.split(':')[2] || '---'; 
+        document.getElementById('h-title').innerText=targetN; 
+        document.getElementById('top-pfp').innerText=targetN.charAt(0).toUpperCase(); 
+        document.getElementById('m-input').disabled=false; 
+        document.getElementById('b-send').disabled=false; 
+        document.getElementById('b-clear-all').style.display='block'; 
+        if(sync) clearInterval(sync); syncMsg(); sync=setInterval(syncMsg,2000); 
+    } else { alert('هذا الرقم غير مسجل!'); }
+});
 
-    if (!username || !password) return alert("برجاء ملء الحقول");
+document.getElementById('b-send').addEventListener('click', async()=>{
+    const m=document.getElementById('m-input').value.trim(); if(!m||!targetP) return;
+    await fetch('/send?sender='+myP+'&receiver='+targetP+'&message='+encodeURIComponent(m)); 
+    document.getElementById('m-input').value=''; syncMsg();
+});
 
-    try {
-        const response = await fetch(`${SERVER_URL}/api/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password })
-        });
-        const data = await response.json();
-        if (data.status === "success") {
-            currentUser = data.user;
-            localStorage.setItem("chat_user", JSON.stringify(currentUser));
-            showChatScreen();
-        } else {
-            alert(data.message);
-        }
-    } catch (err) {
-        alert("خطأ في الاتصال بالشبكة");
-    }
+async function syncMsg(){
+    if(!targetP) return; const res=await fetch('/get_messages?sender='+myP+'&receiver='+targetP); const list=await res.json(); const box=document.getElementById('v-box'); box.innerHTML='';
+    list.forEach(m=>{
+        const d=document.createElement('div'); d.className='msg '+(m.sender===myP?'sent':'received'); d.innerText=m.message;
+        d.addEventListener('contextmenu', async(e)=>{ e.preventDefault(); if(confirm('مسح الرسالة لدى الجميع؟')){ await fetch(`/delete_msg?id=${m.id}`); syncMsg(); }}); box.appendChild(d);
+    }); box.scrollTop=box.scrollHeight;
 }
 
-function showChatScreen() {
-    document.getElementById("auth-screen").classList.add("hidden");
-    document.getElementById("chat-screen").classList.remove("hidden");
-    document.getElementById("current-user-name").innerText = currentUser.username;
-    
-    initSocketConnection();
-    loadActiveChatsFromServer();
-    
-    setInterval(() => {
-        fetchActiveChatMessages();
-        loadActiveChatsFromServer();
-    }, 3000);
-}
+document.getElementById('add-status').addEventListener('click', async()=>{ const txt = prompt('اكتب حالتك الجديدة الحين:'); if(!txt) return; await fetch(`/send_status?phone=${myP}&name=${encodeURIComponent(myName)}&text=${encodeURIComponent(txt)}`); loadStatuses(); });
 
-function initSocketConnection() {
-    if (typeof io === 'undefined') return;
-    try {
-        socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
-        socket.on("connect", () => {
-            socket.emit("join", { username: currentUser.username });
-        });
-    } catch (e) {
-        console.log("Socket holding...");
-    }
-}
-
-async function loadActiveChatsFromServer() {
-    if (!currentUser) return;
-    try {
-        const response = await fetch(`${SERVER_URL}/api/active-chats?username=${currentUser.username}`);
-        const chats = await response.json();
-        chats.forEach(c => {
-            if (!activeChats[c.username]) activeChats[c.username] = { username: c.username, messages: [] };
-        });
-        renderChatsList(chats);
-    } catch (err) {
-        console.log("Sync error");
-    }
-}
-
-function logout() {
-    localStorage.removeItem("chat_user");
-    window.location.reload();
-}
-
-// ================= البحث والمحادثات =================
-
-async function handleSearch(event) {
-    if (event.key !== "Enter") return;
-    const username = document.getElementById("search-username").value.trim();
-    if (!username || username === currentUser.username) return;
-
-    try {
-        const response = await fetch(`${SERVER_URL}/api/search?username=${username}`);
-        const data = await response.json();
-        if (data.status === "success") {
-            const searchedUser = data.user;
-            if (!activeChats[searchedUser.username]) activeChats[searchedUser.username] = { username: searchedUser.username, messages: [] };
-            document.getElementById("search-username").value = ""; 
-            openChat(searchedUser.username);
-        } else {
-            alert(data.message);
-        }
-    } catch (err) {
-        alert("خطأ أثناء البحث");
-    }
-}
-
-function renderChatsList(serverChats = []) {
-    const container = document.getElementById("chats-list-container");
-    container.innerHTML = "";
-    if (serverChats.length === 0) {
-        container.innerHTML = `<div class="no-chats">لا توجد محادثات. ابحث عن اسم مستخدم لبدء دردشة!</div>`;
-        return;
-    }
-    serverChats.forEach(chat => {
-        const isActive = activeChatUser && activeChatUser.username === chat.username ? "active" : "";
-        const chatItem = document.createElement("div");
-        chatItem.className = `chat-item ${isActive}`;
-        chatItem.onclick = () => openChat(chat.username);
-        chatItem.innerHTML = `<div class="avatar-circle"><i class="fas fa-user"></i></div><div class="chat-item-info"><h4>${chat.username}</h4><p>${chat.last_message}</p></div>`;
-        container.appendChild(chatItem);
+async function loadStatuses() {
+    const res = await fetch('/get_statuses'); const list = await res.json(); const sBox = document.getElementById('status-list'); sBox.innerHTML = '';
+    list.forEach(s => {
+        const div = document.createElement('div'); div.className = 'status-item'; div.innerHTML = `<div class="status-circle">${s.name.charAt(0).toUpperCase()}</div><span>${s.name}</span>`;
+        div.addEventListener('click', () => { alert(`حالة ${s.name}:\n\n"${s.text}"`); }); sBox.appendChild(div);
     });
 }
 
-function openChat(username) {
-    activeChatUser = { username: username };
-    document.getElementById("welcome-chat-view").classList.add("hidden");
-    document.getElementById("active-chat-view").classList.remove("hidden");
-    document.getElementById("active-chat-name").innerText = activeChatUser.username;
-    fetchActiveChatMessages();
-}
-
-async function fetchActiveChatMessages() {
-    if (!activeChatUser) return;
-    try {
-        const response = await fetch(`${SERVER_URL}/api/messages?sender=${currentUser.username}&receiver=${activeChatUser.username}`);
-        const messages = await response.json();
-        if (activeChats[activeChatUser.username]) activeChats[activeChatUser.username].messages = messages;
-        renderMessages();
-    } catch (err) {}
-}
-
-async function sendMessage() {
-    const input = document.getElementById("message-input");
-    const messageText = input.value.trim();
-    if (!messageText || !activeChatUser) return;
-
-    const messageData = { sender_username: currentUser.username, receiver_username: activeChatUser.username, message: messageText };
-    input.value = ""; 
-
-    try {
-        await fetch(`${SERVER_URL}/api/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(messageData)
-        });
-        fetchActiveChatMessages(); 
-    } catch (err) {}
-}
-
-function handleSendMessage(event) {
-    if (event.key === "Enter") sendMessage();
-}
-
-function renderMessages() {
-    const box = document.getElementById("messages-box");
-    box.innerHTML = "";
-    if (!activeChatUser || !activeChats[activeChatUser.username]) return;
-
-    const messages = activeChats[activeChatUser.username].messages;
-    messages.forEach(msg => {
-        const isMe = msg.sender_username === currentUser.username;
-        const bubble = document.createElement("div");
-        bubble.className = `msg-bubble ${isMe ? 'sent' : 'received'}`;
-        bubble.innerText = msg.message;
-        box.appendChild(bubble);
-    });
-    box.scrollTop = box.scrollHeight;
+document.getElementById('header-profile-trigger').addEventListener('click', ()=>{ if(!targetP) return; document.getElementById('modal-name').innerText = targetN; document.getElementById('modal-phone').innerText = `الرقم: ${targetP}`; document.getElementById('modal-email').innerText = `البريد: ${targetE}`; document.getElementById('modal-pfp-img').innerText = targetN.charAt(0).toUpperCase(); document.getElementById('profile-modal').classList.remove('hidden'); });
+document.getElementById('close-modal').addEventListener('click', ()=>{ document.getElementById('profile-modal').classList.add('hidden'); });
+document.getElementById('b-clear-all').addEventListener('click', async()=>{ if(confirm('مسح الشات بالكامل؟')){ await fetch(`/clear_chat?sender=${myP}&receiver=${targetP}`); syncMsg(); }});
+document.getElementById('b-out').addEventListener('click', ()=>{ location.reload(); });
