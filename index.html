@@ -25,15 +25,15 @@
                 <h2>مرحباً بك في واتساب كول</h2>
             </div>
             
-            <form id="login-form" class="form-box" onsubmit="handleLogin(event)">
+            <div id="login-form-box" class="form-box">
                 <h3>تسجيل الدخول</h3>
                 <input type="text" id="login-username" placeholder="اسم المستخدم" required>
                 <input type="password" id="login-pass" placeholder="كلمة المرور" required>
-                <button type="submit">دخول</button>
+                <button type="button" onclick="handleLogin(event)">دخول</button>
                 <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()" style="color:#00a884; cursor:pointer; font-weight:bold;">إنشاء حساب جديد</span></p>
-            </form>
+            </div>
 
-            <form id="register-form" class="form-box hidden" onsubmit="handleRegister(event)">
+            <div id="register-form-box" class="form-box hidden">
                 <h3>إنشاء حساب جديد</h3>
                 <div class="avatar-upload-box">
                     <label for="reg-avatar" class="avatar-label">
@@ -44,18 +44,17 @@
                 </div>
                 <input type="text" id="reg-username" placeholder="اسم المستخدم الفريد" required>
                 <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
-                <button type="submit">تسجيل وتفعيل الحساب</button>
+                <button type="button" onclick="handleRegister(event)">تسجيل وتفعيل الحساب</button>
                 <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()" style="color:#00a884; cursor:pointer; font-weight:bold;">تسجيل الدخول</span></p>
-            </form>
+            </div>
         </div>
     </div>
 
-    <!-- واجهة الشات الرئيسية -->
+    <!-- واجهة الشات الرئيسية المتجاوبة -->
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
             <aside class="sidebar" id="app-sidebar">
                 <header class="sidebar-header">
-                    <!-- تم توحيد اسم الدالة هنا لـ openProfileData لتطابق الـ JS بالملي -->
                     <div class="user-profile" onclick="openMyProfile()">
                         <div class="avatar-circle" id="my-avatar-view"><i class="fas fa-user"></i></div>
                         <span id="current-user-name" style="font-weight:bold;">المستخدم</span>
@@ -117,7 +116,7 @@
         </div>
     </div>
 
-    <!-- نافذة البروفايل العائمة -->
+    <!-- الملف الشخصي -->
     <div id="profile-modal" class="modal-backdrop hidden" onclick="closeProfileModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>الملف الشخصي</h3>
@@ -128,11 +127,11 @@
         </div>
     </div>
 
-    <!-- نافذة رفع الحالة -->
+    <!-- نشر حالة -->
     <div id="story-modal" class="modal-backdrop hidden" onclick="closeStoryModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>نشر حالة جديدة</h3>
-            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا..." style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:8px;">
+            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا..." style="width:100%; padding:10px; margin:15px 0; border:1px solid #ccc; border-radius:8px;">
             
             <div style="margin: 10px 0;">
                 <label for="story-file" style="background:#f0f2f5; padding:8px 15px; border-radius:8px; cursor:pointer; display:inline-block; font-size:14px; font-weight:bold; color:#54656f;">
@@ -146,7 +145,7 @@
         </div>
     </div>
 
-    <!-- نافذة عرض الحالة السينمائية -->
+    <!-- عرض الحالة السينمائية -->
     <div id="story-view-modal" class="modal-backdrop hidden" onclick="closeStoryViewModal()" style="background:rgba(0,0,0,0.9);">
         <div class="modal-content" onclick="event.stopPropagation()" style="background:transparent; box-shadow:none; max-width:450px; width:95%;">
             <h4 id="story-view-username" style="color:white; margin-bottom:15px; text-align:right;"></h4>
@@ -160,4 +159,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
