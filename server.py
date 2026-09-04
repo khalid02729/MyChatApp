@@ -3,7 +3,6 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room
 from flask_cors import CORS
 import sqlite3
-import base64
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_folder='.', static_url_path='')
@@ -55,14 +54,12 @@ init_db()
 def index():
     return send_from_directory('.', 'index.html')
 
-# ================= مسارات الـ API المطورة =================
-
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
-    avatar = data.get('avatar', '') # Base64 Image
+    avatar = data.get('avatar', '')
     if not username or not password:
         return jsonify({'status': 'error', 'message': 'برجاء ملء جميع الحقول'}), 400
     hashed_password = generate_password_hash(password)
@@ -80,21 +77,10 @@ def login():
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
     with get_db() as conn:
-        user = conn.execute('SELECT * VALUES FROM users WHERE username = ?', (username,)).fetchone()
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
     if user and check_password_hash(user['password'], password):
         return jsonify({'status': 'success', 'user': {'username': user['username'], 'avatar': user['avatar'], 'bio': user['bio']}})
     return jsonify({'status': 'error', 'message': 'اسم المستخدم أو كلمة المرور غير صحيحة'}), 401
-
-@app.route('/api/update-profile', methods=['POST'])
-def update_profile():
-    data = request.json
-    username = data.get('username')
-    avatar = data.get('avatar')
-    bio = data.get('bio')
-    with get_db() as conn:
-        conn.execute('UPDATE users SET avatar = ?, bio = ? WHERE username = ?', (avatar, bio, username))
-        conn.commit()
-    return jsonify({'status': 'success'})
 
 @app.route('/api/user-profile', methods=['GET'])
 def user_profile():
@@ -162,7 +148,7 @@ def handle_stories():
     if request.method == 'POST':
         data = request.json
         username = data.get('username')
-        content = data.get('content') # Base64 Image or Text
+        content = data.get('content')
         with get_db() as conn:
             conn.execute('INSERT INTO stories (username, content) VALUES (?, ?)', (username, content))
             conn.commit()
@@ -187,4 +173,5 @@ def on_typing(data):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0
+    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+
