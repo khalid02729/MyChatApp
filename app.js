@@ -9,11 +9,11 @@ window.onload = function() {
 };
 
 function previewAvatar(e) {
-    const f = e.target.files[0];
-    if (f) {
+    const f = e.target.files;
+    if (f && f[0]) {
         const r = new FileReader();
         r.onload = () => { globalAvatarBase64 = r.result; document.getElementById("avatar-preview").innerHTML = `<img src="${r.result}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`; };
-        r.readAsDataURL(f);
+        r.readAsDataURL(f[0]);
     }
 }
 
@@ -22,26 +22,55 @@ function toggleAuthForms() {
     document.getElementById("register-form-box").classList.toggle("hidden");
 }
 
+// 🎯 تفعيل مصيدة أخطاء السيرفر الحقيقية عند التسجيل بناءً على فكرتك
 async function handleRegister(e) {
     if (e) e.preventDefault();
     const u = document.getElementById("reg-username").value.trim(), p = document.getElementById("reg-pass").value.trim();
-    if (!u || !p) return alert("برجاء ملء الحقول");
+    if (!u || !p) return alert("برجاء mil الحقول");
     try {
-        const r = await fetch(`${SERVER_URL}/api/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p, avatar: globalAvatarBase64 }) });
-        const d = await r.json(); alert(d.message); if (d.status === "success") toggleAuthForms();
-    } catch (err) { alert("خطأ في الاتصال"); }
+        const r = await fetch(`${SERVER_URL}/api/register`, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify({ username: u, password: p, avatar: globalAvatarBase64 }) 
+        });
+        
+        const d = await r.json(); 
+        if (r.ok && d.status === "success") {
+            alert(d.message); 
+            toggleAuthForms();
+        } else {
+            // المصيدة تقبض على رفض السيرفر الداخلي
+            alert("🚨 السيرفر استقبل الطلب ولكنه رفضه!\n\nالسبب القادم من السيرفر:\n" + (d.message || "خطأ غير معروف"));
+        }
+    } catch (err) { 
+        // المصيدة تقبض على انقطاع الشبكة أو انهيار السيرفر بالكامل
+        alert("💥 مصيدة أخطاء السيرفر والشبكة:\n\nتعذر الوصول للسيرفر نهائياً!\nتفاصيل الخطأ: " + err.message + "\n\nتأكد من أن السيرفر لونه أخضر ACTIVE في لوحة Railway"); 
+    }
 }
 
+// 🎯 تفعيل مصيدة أخطاء السيرفر الحقيقية عند تسجيل الدخول
 async function handleLogin(e) {
     if (e) e.preventDefault();
     const u = document.getElementById("login-username").value.trim(), p = document.getElementById("login-pass").value.trim();
     if (!u || !p) return alert("برجاء ملء الحقول");
     try {
-        const r = await fetch(`${SERVER_URL}/api/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p }) });
+        const r = await fetch(`${SERVER_URL}/api/login`, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify({ username: u, password: p }) 
+        });
+        
         const d = await r.json();
-        if (r.ok && d.status === "success") { currentUser = d.user; localStorage.setItem("chat_user", JSON.stringify(d.user)); showChatScreen(); }
-        else { alert(d.message); }
-    } catch (err) { alert("خطأ بالاتصال بالسيرفر"); }
+        if (r.ok && d.status === "success") { 
+            currentUser = d.user; 
+            localStorage.setItem("chat_user", JSON.stringify(d.user)); 
+            showChatScreen(); 
+        } else { 
+            alert("🚨 السيرفر رفض الدخول!\n\nالسبب: " + (d.message || "اسم المستخدم أو كلمة المرور غير صحيحة")); 
+        }
+    } catch (err) { 
+        alert("💥 مصيدة أخطاء السيرفر والشبكة:\n\nفشل الاتصال تماماً أثناء محاولة الدخول!\nتفاصيل الخطأ: " + err.message); 
+    }
 }
 
 function showChatScreen() {
@@ -82,8 +111,8 @@ function openChat(u, a = "") {
     document.getElementById("welcome-chat-view").classList.add("hidden");
     document.getElementById("active-chat-view").classList.remove("hidden");
     document.getElementById("active-chat-name").innerText = u;
-    const b = document.getElementById("active-chat-avatar");
-    if(b) b.innerHTML = a ? `<img src="${a}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<i class="fas fa-user"></i>`;
+    const box = document.getElementById("active-chat-avatar");
+    if(box) box.innerHTML = a ? `<img src="${a}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<i class="fas fa-user"></i>`;
     fetchActiveChatMessages();
 }
 
@@ -104,7 +133,7 @@ async function loadActiveChatsFromServer() {
             item.onclick = () => { const img = item.querySelector('.avatar-circle img'); openChat(chat.username, img ? img.src : ""); };
             item.innerHTML = `<div class="avatar-circle" id="chat-ava-${chat.username}"><i class="fas fa-user"></i></div><div class="chat-item-info"><h4>${chat.username}</h4><p>${chat.last_message}</p></div>`;
             container.appendChild(item);
-            fetch(`${SERVER_URL}/api/user-profile?username=${chat.username}`).then(res => r.json()).then(d => {
+            fetch(`${SERVER_URL}/api/user-profile?username=${chat.username}`).then(res => res.json()).then(d => {
                 if(d.status === "success" && d.user.avatar) { const b = document.getElementById(`chat-ava-${chat.username}`); if(b) b.innerHTML = `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`; }
             }).catch(()=>{});
         });
@@ -149,18 +178,3 @@ async function sendMessage() {
 
 function handleSendMessage(e) { if (e.key === "Enter") sendMessage(); }
 function toggleEmojiBox() { document.getElementById("emoji-box").classList.toggle("hidden"); }
-function insertEmoji(em) { const inp = document.getElementById("message-input"); if(inp) inp.value += em; toggleEmojiBox(); }
-function openMyProfile() { openProfileData(currentUser.username); }
-function openFriendProfile() { if(activeChatUser) openProfileData(activeChatUser.username); }
-
-async function openProfileData(u) {
-    try {
-        const r = await fetch(`${SERVER_URL}/api/user-profile?username=${u}`), d = await r.json();
-        if(d.status === "success") {
-            document.getElementById("modal-profile-name").innerText = d.user.username; document.getElementById("modal-profile-bio").innerText = d.user.bio;
-            const avaBox = document.getElementById("modal-profile-avatar"); if(avaBox) avaBox.innerHTML = d.user.avatar ? `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<i class="fas fa-user" style="font-size:40px;"></i>`;
-            document.getElementById("profile-modal").classList.remove("hidden");
-        }
-    } catch(e){}
-}
-
