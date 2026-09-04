@@ -1,4 +1,3 @@
-
 const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
 let socket = null; 
 let currentUser = null;
@@ -7,10 +6,14 @@ let activeChats = {};
 let globalAvatarBase64 = "";
 
 document.addEventListener("DOMContentLoaded", () => {
-    const savedUser = localStorage.getItem("chat_user");
-    if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        showChatScreen();
+    try {
+        const savedUser = localStorage.getItem("chat_user");
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            showChatScreen();
+        }
+    } catch (e) {
+        console.log("Local storage error safe catch");
     }
 });
 
@@ -87,28 +90,32 @@ function showChatScreen() {
 
 function initSocketConnection() {
     if (typeof io === 'undefined') return;
-    socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
-    socket.on("connect", () => { socket.emit("join", { username: currentUser.username }); });
-    
-    socket.on("receive_message", (data) => {
-        const sound = document.getElementById("notif-sound");
-        if(sound) sound.play().catch(()=>{});
-        if (activeChatUser && (data.sender_username === activeChatUser.username || data.receiver_username === activeChatUser.username)) {
-            fetchActiveChatMessages();
-        }
-        loadActiveChatsFromServer();
-    });
+    try {
+        socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
+        socket.on("connect", () => { socket.emit("join", { username: currentUser.username }); });
+        
+        socket.on("receive_message", (data) => {
+            const sound = document.getElementById("notif-sound");
+            if(sound) sound.play().catch(()=>{});
+            if (activeChatUser && (data.sender_username === activeChatUser.username || data.receiver_username === activeChatUser.username)) {
+                fetchActiveChatMessages();
+            }
+            loadActiveChatsFromServer();
+        });
 
-    socket.on("message_deleted", () => { if (activeChatUser) fetchActiveChatMessages(); });
-    socket.on("display_typing", (data) => {
-        if (activeChatUser && data.sender === activeChatUser.username) {
-            document.getElementById("typing-status").innerText = data.typing ? "يكتب الآن..." : "";
-        }
-    });
+        socket.on("message_deleted", () => { if (activeChatUser) fetchActiveChatMessages(); });
+        socket.on("display_typing", (data) => {
+            if (activeChatUser && data.sender === activeChatUser.username) {
+                document.getElementById("typing-status").innerText = data.typing ? "يكتب الآن..." : "";
+            }
+        });
+    } catch (e) {
+        console.log("Socket safe bypass");
+    }
 }
 
 function emitTyping() {
-    if (!activeChatUser) return;
+    if (!activeChatUser || !socket) return;
     socket.emit("typing", { sender: currentUser.username, receiver: activeChatUser.username, typing: true });
     clearTimeout(window.typingTimeout);
     window.typingTimeout = setTimeout(() => {
@@ -230,10 +237,3 @@ async function triggerDeleteMessage(msgId) {
 
 async function sendMessage() {
     const input = document.getElementById("message-input");
-    const messageText = input.value.trim();
-    if (!messageText || !activeChatUser) return;
-    const messageData = { sender_username: currentUser.username, receiver_username: activeChatUser.username, message: messageText };
-    input.value = ""; 
-    try {
-        await fetch(`${SERVER_URL}/api/send`, {
-
