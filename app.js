@@ -11,13 +11,13 @@ window.onload = function() {
 
 function previewAvatar(event) {
     const file = event.target.files;
-    if (file) {
+    if (file && file[0]) {
         const reader = new FileReader();
         reader.onload = function() {
             globalAvatarBase64 = reader.result;
             document.getElementById("avatar-preview").innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(file[0]);
     }
 }
 
@@ -60,7 +60,7 @@ async function handleLogin(event) {
             localStorage.setItem("chat_user", JSON.stringify(currentUser));
             showChatScreen();
         } else { alert(d.message); }
-    } catch (err) { alert("خطأ بالاتصال"); }
+    } catch (err) { alert("خطأ بالاتصال بالسيرفر"); }
 }
 
 function showChatScreen() {
@@ -222,3 +222,4 @@ async function sendMessage() {
 
 function handleSendMessage(event) { if (event.key === "Enter") sendMessage(); }
 function toggleEmojiBox() { document.getElementById("emoji-box").classList.toggle("hidden"); }
+
