@@ -10,23 +10,24 @@
 </head>
 <body>
 
-    <!-- شاشة تسجيل الدخول المحدثة بالصورة الشخصية -->
+    <!-- شاشة تسجيل الدخول -->
     <div id="auth-screen" class="screen">
         <div class="auth-container">
             <div class="auth-header">
-                <i class="fab fa-whatsapp" style="color: #00a884; font-size: 50px; margin-bottom: 10px;"></i>
+                <i class="fab fa-whatsapp" style="color:#00a884;font-size:50px;margin-bottom:10px;"></i>
                 <h2>مرحباً بك في واتساب كول</h2>
             </div>
             
-            <form id="login-form" class="form-box">
+            <!-- تم إضافة الاستدعاء المباشر onsubmit هنا لضمان عمل الزر على الموبايل فوراً -->
+            <form id="login-form" class="form-box" onsubmit="handleLogin(event)">
                 <h3>تسجيل الدخول</h3>
                 <input type="text" id="login-username" placeholder="اسم المستخدم" required>
                 <input type="password" id="login-pass" placeholder="كلمة المرور" required>
                 <button type="submit">دخول</button>
-                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()">إنشاء حساب جديد</span></p>
+                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()" style="color:#00a884; cursor:pointer; font-weight:bold;">إنشاء حساب جديد</span></p>
             </form>
 
-            <form id="register-form" class="form-box hidden">
+            <form id="register-form" class="form-box hidden" onsubmit="handleRegister(event)">
                 <h3>إنشاء حساب جديد</h3>
                 <div class="avatar-upload-box">
                     <label for="reg-avatar" class="avatar-label">
@@ -38,21 +39,19 @@
                 <input type="text" id="reg-username" placeholder="اسم المستخدم الفريد" required>
                 <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
                 <button type="submit">تسجيل وتفعيل الحساب</button>
-                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()">تسجيل الدخول</span></p>
+                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()" style="color:#00a884; cursor:pointer; font-weight:bold;">تسجيل الدخول</span></p>
             </form>
         </div>
     </div>
 
-    <!-- واجهة الشات الرئيسية المتجاوبة (واتساب الحقيقي) -->
+    <!-- واجهة الشات الرئيسية المتجاوبة -->
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
-            
-            <!-- القائمة الجانبية (الشاشة الرئيسية على الموبايل) -->
             <aside class="sidebar" id="app-sidebar">
                 <header class="sidebar-header">
                     <div class="user-profile" onclick="openMyProfileModal()">
                         <div class="avatar-circle" id="my-avatar-view"><i class="fas fa-user"></i></div>
-                        <span id="current-user-name" style="font-weight: bold;">المستخدم</span>
+                        <span id="current-user-name" style="font-weight:bold;">المستخدم</span>
                     </div>
                     <div>
                         <button onclick="openStoryModal()" class="header-icon-btn"><i class="fas fa-circle-notch"></i></button>
@@ -60,15 +59,11 @@
                     </div>
                 </header>
 
-                <!-- قسم الستوري / الحالات المحدث -->
                 <div class="stories-wrapper">
                     <h4>الحالات الحديثة</h4>
-                    <div class="stories-bar" id="stories-container">
-                        <!-- الحالات تظهر هنا تلقائياً -->
-                    </div>
+                    <div class="stories-bar" id="stories-container"></div>
                 </div>
 
-                <!-- شريط البحث -->
                 <div class="search-bar-container">
                     <div class="search-wrapper">
                         <i class="fas fa-search search-icon"></i>
@@ -79,10 +74,9 @@
                 <div class="chats-list" id="chats-list-container"></div>
             </aside>
 
-            <!-- منطقة الرسائل (تفتح في شاشة كاملة عند الضغط على صديق في الموبايل) -->
             <main class="chat-area hidden-mobile" id="app-chat-area">
                 <div id="welcome-chat-view" class="welcome-view">
-                    <i class="fab fa-whatsapp" style="font-size: 70px; color: #ced5d8; margin-bottom: 15px;"></i>
+                    <i class="fab fa-whatsapp" style="font-size:70px;color:#ced5d8;margin-bottom:15px;"></i>
                     <h2>واتساب كول للموبايل والويب</h2>
                     <p>أرسل واستقبل الرسائل فورياً بصور البروفايل وحذف الرسائل من الطرفين.</p>
                 </div>
@@ -101,10 +95,9 @@
                     
                     <div class="messages-container" id="messages-box"></div>
                     
-                    <!-- لوحة الإيموجي السريعة المدمجة -->
                     <div class="emoji-drawer hidden" id="emoji-box">
                         <span onclick="insertEmoji('😀')">😀</span><span onclick="insertEmoji('😂')">😂</span><span onclick="insertEmoji('😍')">😍</span><span onclick="insertEmoji('👍')">👍</span>
-                        <span onclick="insertEmoji('🌹')">🌹</span><span onclick="insertEmoji('🎉')">🎉</span><span onclick="insertEmoji('❤️')">❤️</span><span onclick="insertEmoji('هيع')">😂</span>
+                        <span onclick="insertEmoji('🌹')">🌹</span><span onclick="insertEmoji('🎉')">🎉</span><span onclick="insertEmoji('❤️')">❤️</span>
                     </div>
 
                     <footer class="chat-footer">
@@ -117,30 +110,28 @@
         </div>
     </div>
 
-    <!-- نافذة عرض بروفايل المستخدم وباقي البيانات -->
-    <div id="profile-modal" class="modal hidden" onclick="closeProfileModal()">
+    <!-- النوافذ العائمة المصلحة تماماً وتعمل بشكل سليم دون حجب اللمس خلفها -->
+    <div id="profile-modal" class="modal-backdrop hidden" onclick="closeProfileModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="modal-profile-title">الملف الشخصي</h3>
-            <div class="avatar-circle large text-center" id="modal-profile-avatar"></div>
+            <h3>الملف الشخصي</h3>
+            <div class="avatar-circle large text-center" id="modal-profile-avatar" style="margin: 15px auto;"></div>
             <h2 id="modal-profile-name"></h2>
             <p id="modal-profile-bio"></p>
-            <button onclick="closeProfileModal()" class="form-box button" style="margin-top:15px;">إغلاق</button>
+            <button onclick="closeProfileModal()" class="close-modal-btn">إغلاق</button>
         </div>
     </div>
 
-    <!-- نافذة رفع حالة جديدة -->
-    <div id="story-modal" class="modal hidden" onclick="closeStoryModal()">
+    <div id="story-modal" class="modal-backdrop hidden" onclick="closeStoryModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>نشر حالة جديدة</h3>
-            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا...">
-            <button onclick="uploadStory()" class="form-box button" style="margin-top:10px;">نشر الحالة</button>
+            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا..." style="width:100%; padding:10px; margin:15px 0; border:1px solid #ccc; border-radius:8px;">
+            <button onclick="uploadStory()" class="close-modal-btn" style="background:#00a884;">نشر الحالة</button>
         </div>
     </div>
 
-    <!-- صوت تنبيه الإشعارات للرسائل الجديدة الخارقة -->
     <audio id="notif-sound" src="https://mixkit.co" preload="auto"></audio>
-
     <script src="app.js" defer></script>
 </body>
 </html>
+
 
