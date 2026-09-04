@@ -11,19 +11,19 @@ window.onload = function() {
 
 function previewAvatar(event) {
     const file = event.target.files;
-    if (file && file[0]) {
+    if (file && file) {
         const reader = new FileReader();
         reader.onload = function() {
             globalAvatarBase64 = reader.result;
             document.getElementById("avatar-preview").innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
         };
-        reader.readAsDataURL(file[0]);
+        reader.readAsDataURL(file);
     }
 }
 
 function toggleAuthForms() {
-    document.getElementById("login-form").classList.toggle("hidden");
-    document.getElementById("register-form").classList.toggle("hidden");
+    document.getElementById("login-form-box").classList.toggle("hidden");
+    document.getElementById("register-form-box").classList.toggle("hidden");
 }
 
 async function handleRegister(event) {
@@ -222,4 +222,3 @@ async function sendMessage() {
 
 function handleSendMessage(event) { if (event.key === "Enter") sendMessage(); }
 function toggleEmojiBox() { document.getElementById("emoji-box").classList.toggle("hidden"); }
-
