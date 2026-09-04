@@ -10,10 +10,10 @@ window.onload = function() {
 
 function previewAvatar(e) {
     const f = e.target.files;
-    if (f && f[0]) {
+    if (f && f) {
         const r = new FileReader();
         r.onload = () => { globalAvatarBase64 = r.result; document.getElementById("avatar-preview").innerHTML = `<img src="${r.result}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`; };
-        r.readAsDataURL(f[0]);
+        r.readAsDataURL(f);
     }
 }
 
@@ -22,55 +22,28 @@ function toggleAuthForms() {
     document.getElementById("register-form-box").classList.toggle("hidden");
 }
 
-// 🎯 تفعيل مصيدة أخطاء السيرفر الحقيقية عند التسجيل بناءً على فكرتك
 async function handleRegister(e) {
     if (e) e.preventDefault();
     const u = document.getElementById("reg-username").value.trim(), p = document.getElementById("reg-pass").value.trim();
-    if (!u || !p) return alert("برجاء mil الحقول");
+    if (!u || !p) return alert("برجاء ملء الحقول");
     try {
-        const r = await fetch(`${SERVER_URL}/api/register`, { 
-            method: "POST", 
-            headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({ username: u, password: p, avatar: globalAvatarBase64 }) 
-        });
-        
+        const r = await fetch(`${SERVER_URL}/api/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p, avatar: globalAvatarBase64 }) });
         const d = await r.json(); 
-        if (r.ok && d.status === "success") {
-            alert(d.message); 
-            toggleAuthForms();
-        } else {
-            // المصيدة تقبض على رفض السيرفر الداخلي
-            alert("🚨 السيرفر استقبل الطلب ولكنه رفضه!\n\nالسبب القادم من السيرفر:\n" + (d.message || "خطأ غير معروف"));
-        }
-    } catch (err) { 
-        // المصيدة تقبض على انقطاع الشبكة أو انهيار السيرفر بالكامل
-        alert("💥 مصيدة أخطاء السيرفر والشبكة:\n\nتعذر الوصول للسيرفر نهائياً!\nتفاصيل الخطأ: " + err.message + "\n\nتأكد من أن السيرفر لونه أخضر ACTIVE في لوحة Railway"); 
-    }
+        if (r.ok && d.status === "success") { alert(d.message); toggleAuthForms(); }
+        else { alert("🚨 السيرفر رفض التسجيل وقال:\n" + (d.message || "خطأ غير معروف")); }
+    } catch (err) { alert("💥 مصيدة أخطاء السيرفر والشبكة:\n\nتعذر الوصول للسيرفر نهائياً!\nتفاصيل الخطأ: " + err.message); }
 }
 
-// 🎯 تفعيل مصيدة أخطاء السيرفر الحقيقية عند تسجيل الدخول
 async function handleLogin(e) {
     if (e) e.preventDefault();
     const u = document.getElementById("login-username").value.trim(), p = document.getElementById("login-pass").value.trim();
     if (!u || !p) return alert("برجاء ملء الحقول");
     try {
-        const r = await fetch(`${SERVER_URL}/api/login`, { 
-            method: "POST", 
-            headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({ username: u, password: p }) 
-        });
-        
+        const r = await fetch(`${SERVER_URL}/api/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p }) });
         const d = await r.json();
-        if (r.ok && d.status === "success") { 
-            currentUser = d.user; 
-            localStorage.setItem("chat_user", JSON.stringify(d.user)); 
-            showChatScreen(); 
-        } else { 
-            alert("🚨 السيرفر رفض الدخول!\n\nالسبب: " + (d.message || "اسم المستخدم أو كلمة المرور غير صحيحة")); 
-        }
-    } catch (err) { 
-        alert("💥 مصيدة أخطاء السيرفر والشبكة:\n\nفشل الاتصال تماماً أثناء محاولة الدخول!\nتفاصيل الخطأ: " + err.message); 
-    }
+        if (r.ok && d.status === "success") { currentUser = d.user; localStorage.setItem("chat_user", JSON.stringify(d.user)); showChatScreen(); }
+        else { alert("🚨 السيرفر رفض الدخول!\n\nالسبب: " + (d.message || "اسم المستخدم أو كلمة المرور غير صحيحة")); }
+    } catch (err) { alert("💥 مصيدة أخطاء السيرفر والشبكة:\n\nفشل الاتصال تماماً أثناء محاولة الدخول!\nتفاصيل الخطأ: " + err.message); }
 }
 
 function showChatScreen() {
@@ -178,3 +151,12 @@ async function sendMessage() {
 
 function handleSendMessage(e) { if (e.key === "Enter") sendMessage(); }
 function toggleEmojiBox() { document.getElementById("emoji-box").classList.toggle("hidden"); }
+function insertEmoji(em) { const inp = document.getElementById("message-input"); if(inp) inp.value += em; toggleEmojiBox(); }
+function openMyProfile() { openProfileData(currentUser.username); }
+function openFriendProfile() { if(activeChatUser) openProfileData(activeChatUser.username); }
+
+async function openProfileData(u) {
+    try {
+        const r = await fetch(`${SERVER_URL}/api/user-profile?username=${u}`), d = await r.json();
+        if(d.status === "success") {
+            document.getElementById("modal-profile-name").innerText = d.user.username; document.getElementById("modal-profile-bio").innerText = d.user.bio;
