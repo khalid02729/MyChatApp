@@ -8,9 +8,22 @@
     <link rel="stylesheet" href="https://cloudflare.com">
     <script src="https://socket.io"></script>
     
+    <!-- مصيدة الأخطاء الشاملة المطورة بناء على فكرتك الذكية -->
     <script>
-        window.onerror = function(msg, url, line) {
-            alert("🚨 قفشنا الغلط البرمجي:\n" + msg + "\nفي السطر: " + line);
+        // مصفوفة لتجميع كافة الأخطاء في الصفحة
+        window.allErrorsList = [];
+        
+        window.onerror = function(msg, url, line, col, error) {
+            var errorLog = "🔴 خطأ: " + msg + "\n← في السطر: " + line + " (عمود: " + col + ")";
+            window.allErrorsList.push(errorLog);
+            
+            // عرض لستة الأخطاء كاملة ومجمعة في نافذة واحدة فوراً
+            setTimeout(function() {
+                if(window.allErrorsList.length > 0) {
+                    alert("🚨 تقرير الأخطاء الشامل المجمّع:\n\n" + window.allErrorsList.join("\n\n") + "\n\nبرجاء تصوير الشاشة وإرسالها للمعالجة الفورية!");
+                    window.allErrorsList = []; // تفريغ بعد العرض
+                }
+            }, 100);
             return false;
         };
     </script>
@@ -116,7 +129,7 @@
         </div>
     </div>
 
-    <!-- الملف الشخصي -->
+    <!-- النوافذ العائمة -->
     <div id="profile-modal" class="modal-backdrop hidden" onclick="closeProfileModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>الملف الشخصي</h3>
@@ -127,7 +140,6 @@
         </div>
     </div>
 
-    <!-- نشر حالة -->
     <div id="story-modal" class="modal-backdrop hidden" onclick="closeStoryModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>نشر حالة جديدة</h3>
@@ -145,7 +157,6 @@
         </div>
     </div>
 
-    <!-- عرض الحالة السينمائية -->
     <div id="story-view-modal" class="modal-backdrop hidden" onclick="closeStoryViewModal()" style="background:rgba(0,0,0,0.9);">
         <div class="modal-content" onclick="event.stopPropagation()" style="background:transparent; box-shadow:none; max-width:450px; width:95%;">
             <h4 id="story-view-username" style="color:white; margin-bottom:15px; text-align:right;"></h4>
