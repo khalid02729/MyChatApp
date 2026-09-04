@@ -1,4 +1,3 @@
-
 import os
 import sqlite3
 from flask import Flask, jsonify, request, send_from_directory
@@ -58,7 +57,7 @@ def api_login():
     user_row = cursor.fetchone()
     conn.close()
     if user_row:
-        # التعديل السحري هنا: رجعنا الهيكل كـ dictionary جواه الكلمة عشان الجافا سكريبت يفهمه
+        # التعديل السحري: أخذنا user_row[0] عشان نخلص من القوسين والفاصلة خالص والاسم يرجع صافي
         return jsonify({'status': 'success', 'user': {'username': user_row[0]}})
     return jsonify({'status': 'error', 'message': 'اسم المستخدم أو كلمة المرور غير صحيحة!'})
 
@@ -147,8 +146,10 @@ def api_delete_message():
         cursor.execute('SELECT sender_username, receiver_username FROM messages WHERE id = ?', (msg_id,))
         row = cursor.fetchone()
         if row:
-            socketio.emit('message_deleted_for_everyone', {'sender': row[0], 'receiver': row[1]}, room=row[0])
-            socketio.emit('message_deleted_for_everyone', {'sender': row[0], 'receiver': row[1]}, room=row[1])
+            s_user = row[0]
+            r_user = row[1]
+            socketio.emit('message_deleted_for_everyone', {'sender': s_user, 'receiver': r_user}, room=s_user)
+            socketio.emit('message_deleted_for_everyone', {'sender': s_user, 'receiver': r_user}, room=r_user)
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
