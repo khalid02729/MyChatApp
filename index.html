@@ -8,17 +8,17 @@
     <link rel="stylesheet" href="https://cloudflare.com">
     <script src="https://socket.io"></script>
     
+    <!-- مصيدة الأخطاء في الأعلى لمراقبة الصفحة بأمان -->
     <script>
         window.onerror = function(msg, url, line) {
             alert("🚨 قفشنا الغلط البرمجي:\n" + msg + "\nفي السطر: " + line);
             return false;
         };
     </script>
-    
-    <script src="app.js"></script>
 </head>
 <body>
 
+    <!-- شاشة تسجيل الدخول -->
     <div id="auth-screen" class="screen">
         <div class="auth-container">
             <div class="auth-header">
@@ -51,6 +51,7 @@
         </div>
     </div>
 
+    <!-- واجهة الشات الرئيسية المتجاوبة -->
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
             <aside class="sidebar" id="app-sidebar">
@@ -116,6 +117,7 @@
         </div>
     </div>
 
+    <!-- النوافذ العائمة -->
     <div id="profile-modal" class="modal-backdrop hidden" onclick="closeProfileModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>الملف الشخصي</h3>
@@ -129,7 +131,7 @@
     <div id="story-modal" class="modal-backdrop hidden" onclick="closeStoryModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>نشر حالة جديدة</h3>
-            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا..." style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:8px;">
+            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا..." style="width:100%; padding:10px; margin:15px 0; border:1px solid #ccc; border-radius:8px;">
             
             <div style="margin: 10px 0;">
                 <label for="story-file" style="background:#f0f2f5; padding:8px 15px; border-radius:8px; cursor:pointer; display:inline-block; font-size:14px; font-weight:bold; color:#54656f;">
@@ -153,5 +155,8 @@
     </div>
 
     <audio id="notif-sound" src="https://mixkit.co" preload="auto"></audio>
+
+    <!-- تم نقل استدعاء ملف الجافا سكريبت هنا في الأسفل لضمان التعرف على العناصر بنجاح تام -->
+    <script src="app.js"></script>
 </body>
 </html>
