@@ -18,13 +18,15 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function previewAvatar(event) {
-    const file = event.target.files[0];
-    const reader = new FileReader();
-    reader.onload = function() {
-        globalAvatarBase64 = reader.result;
-        document.getElementById("avatar-preview").innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    const file = event.target.files;
+    if (file && file[0]) {
+        const reader = new FileReader();
+        reader.onload = function() {
+            globalAvatarBase64 = reader.result;
+            document.getElementById("avatar-preview").innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+        }
+        reader.readAsDataURL(file[0]);
     }
-    if(file) reader.readAsDataURL(file);
 }
 
 function toggleAuthForms() {
@@ -36,6 +38,7 @@ async function handleRegister(event) {
     if (event) event.preventDefault();
     const username = document.getElementById("reg-username").value.trim();
     const password = document.getElementById("reg-pass").value.trim();
+    if (!username || !password) return alert("برجاء ملء جميع الحقول");
     try {
         const response = await fetch(`${SERVER_URL}/api/register`, {
             method: "POST",
@@ -52,6 +55,7 @@ async function handleLogin(event) {
     if (event) event.preventDefault();
     const username = document.getElementById("login-username").value.trim();
     const password = document.getElementById("login-pass").value.trim();
+    if (!username || !password) return alert("برجاء ملء جميع الحقول");
     try {
         const response = await fetch(`${SERVER_URL}/api/login`, {
             method: "POST",
@@ -64,7 +68,7 @@ async function handleLogin(event) {
             localStorage.setItem("chat_user", JSON.stringify(currentUser));
             showChatScreen();
         } else { alert(data.message); }
-    } catch (err) { alert("خطأ بالاتصال"); }
+    } catch (err) { alert("خطأ بالاتصال بالسيرفر"); }
 }
 
 function showChatScreen() {
@@ -72,7 +76,7 @@ function showChatScreen() {
     document.getElementById("chat-screen").classList.remove("hidden");
     document.getElementById("current-user-name").innerText = currentUser.username;
     if (currentUser.avatar) {
-        document.getElementById("my-avatar-view").innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;border-radius:50%;">`;
+        document.getElementById("my-avatar-view").innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
     }
     initSocketConnection();
     loadActiveChatsFromServer();
@@ -86,7 +90,8 @@ function initSocketConnection() {
     socket.on("connect", () => { socket.emit("join", { username: currentUser.username }); });
     
     socket.on("receive_message", (data) => {
-        document.getElementById("notif-sound").play().catch(()=>{});
+        const sound = document.getElementById("notif-sound");
+        if(sound) sound.play().catch(()=>{});
         if (activeChatUser && (data.sender_username === activeChatUser.username || data.receiver_username === activeChatUser.username)) {
             fetchActiveChatMessages();
         }
@@ -110,22 +115,17 @@ function emitTyping() {
     }, 2000);
 }
 
-// ================= التنقل الذكي لشاشات الموبايل (واتساب الحقيقي) =================
 function openChat(username, avatarImg = "") {
     activeChatUser = { username: username };
-    
-    // إخفاء القائمة الجانبية وإظهار الشات ملىء الشاشة على الموبايل
     document.getElementById("app-sidebar").classList.add("hidden-mobile");
     document.getElementById("app-chat-area").classList.remove("hidden-mobile");
-    
     document.getElementById("welcome-chat-view").classList.add("hidden");
     document.getElementById("active-chat-view").classList.remove("hidden");
     document.getElementById("active-chat-name").innerText = activeChatUser.username;
     
     const chatAvatarBox = document.getElementById("active-chat-avatar");
-    if(avatarImg) chatAvatarBox.innerHTML = `<img src="${avatarImg}" style="width:100%;height:100%;border-radius:50%;">`;
+    if(avatarImg) chatAvatarBox.innerHTML = `<img src="${avatarImg}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
     else chatAvatarBox.innerHTML = `<i class="fas fa-user"></i>`;
-    
     fetchActiveChatMessages();
 }
 
@@ -155,21 +155,23 @@ function renderChatsList(serverChats = []) {
         const chatItem = document.createElement("div");
         chatItem.className = `chat-item ${isActive}`;
         
-        // جلب صورة الصديق لعرضها بالقائمة الجانبية
-        let avatarTag = `<i class="fas fa-user"></i>`;
-        fetch(`${SERVER_URL}/api/user-profile?username=${chat.username}`).then(r => r.json()).then(d => {
-            if(d.status === "success" && d.user.avatar) {
-                document.getElementById(`chat-ava-${chat.username}`).innerHTML = `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-            }
-        }).catch(()=>{});
-
         chatItem.onclick = () => {
-            const imgEl = document.getElementById(`chat-ava-${chat.username}`).querySelector('img');
+            const imgEl = chatItem.querySelector('.avatar-circle img');
             openChat(chat.username, imgEl ? imgEl.src : "");
         };
-
-        chatItem.innerHTML = `<div class="avatar-circle" id="chat-ava-${chat.username}">${avatarTag}</div><div class="chat-item-info"><h4>${chat.username}</h4><p>${chat.last_message}</p></div>`;
+        
+        chatItem.innerHTML = `<div class="avatar-circle" id="chat-ava-${chat.username}"><i class="fas fa-user"></i></div><div class="chat-item-info"><h4>${chat.username}</h4><p>${chat.last_message}</p></div>`;
         container.appendChild(chatItem);
+
+        // جلب الصور بطريقة آمنة منفصلة بدون تجميد الكود
+        fetch(`${SERVER_URL}/api/user-profile?username=${chat.username}`)
+            .then(r => r.json())
+            .then(d => {
+                if(d.status === "success" && d.user.avatar) {
+                    const avaBox = document.getElementById(`chat-ava-${chat.username}`);
+                    if(avaBox) avaBox.innerHTML = `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+                }
+            }).catch(()=>{});
     });
 }
 
@@ -204,15 +206,10 @@ function renderMessages(messages = []) {
         const bubble = document.createElement("div");
         bubble.className = `msg-bubble ${isMe ? 'sent' : 'received'}`;
         bubble.innerText = msg.message;
-        
-        // ميزة النقر المطول لحذف الرسالة من الجميع
         if (!msg.deleted_for_all && isMe) {
             bubble.style.cursor = "pointer";
-            bubble.title = "اضغط لحذف الرسالة للجميع";
             bubble.onclick = () => {
-                if(confirm("هل تريد حذف هذه الرسالة لدى الجميع؟")) {
-                    triggerDeleteMessage(msg.id);
-                }
+                if(confirm("هل تريد حذف هذه الرسالة لدى الجميع؟")) { triggerDeleteMessage(msg.id); }
             };
         }
         box.appendChild(bubble);
@@ -221,15 +218,18 @@ function renderMessages(messages = []) {
 }
 
 async function triggerDeleteMessage(msgId) {
-    await fetch(`${SERVER_URL}/api/delete-message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: msgId, sender_username: currentUser.username, receiver_username: activeChatUser.username })
-    });
-    fetchActiveChatMessages();
+    try {
+        await fetch(`${SERVER_URL}/api/delete-message`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: msgId, sender_username: currentUser.username, receiver_username: activeChatUser.username })
+        });
+        fetchActiveChatMessages();
+    } catch(e){}
 }
 
 async function sendMessage() {
     const input = document.getElementById("message-input");
     const messageText = input.value.trim();
     if (!messageText || !activeChatUser) return;
+
