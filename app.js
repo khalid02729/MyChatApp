@@ -1,36 +1,72 @@
-const SERVER_URL = "https://railway.app";
+const SERVER_URL = window.location.protocol + "//" + window.location.host;
 let socket = null, currentUser = null, activeChatUser = null, globalAvatarBase64 = "", storyMediaBase64 = "", storyMediaType = "text";
 
 window.onload = function() {
     try { const u = localStorage.getItem("chat_user"); if (u) { currentUser = JSON.parse(u); showChatScreen(); } } catch (e) {}
 };
 function previewAvatar(e) {
-    const f = e.target.files[0];
+    const f = e.target.files;
     if (f) { const r = new FileReader(); r.onload = () => { globalAvatarBase64 = r.result; document.getElementById("avatar-preview").innerHTML = `<img src="${r.result}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`; }; r.readAsDataURL(f); }
 }
 function toggleAuthForms() {
     document.getElementById("login-form-box").classList.toggle("hidden"); document.getElementById("register-form-box").classList.toggle("hidden");
 }
+
+// 🎯 مصيدة أخطاء السيرفر المجمّعة والشاملة عند التسجيل
 async function handleRegister(e) {
     if (e) e.preventDefault();
     const u = document.getElementById("reg-username").value.trim(), p = document.getElementById("reg-pass").value.trim();
     if (!u || !p) return alert("برجاء ملء الحقول");
+    
+    let report = ["📋 تقرير مصيدة أخطاء التسجيل المجمّع:"];
     try {
+        report.push("🔹 1. محاولة الاتصال بـ: " + SERVER_URL + "/api/register");
         const r = await fetch(`${SERVER_URL}/api/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p, avatar: globalAvatarBase64 }) });
-        const d = await r.json(); alert(d.message); if (d.status === "success") toggleAuthForms();
-    } catch (err) { alert("🚨 مصيدة أخطاء السيرفر والشبكة:\n" + err.message); }
+        
+        report.push("🔹 2. حالة الـ Response HTTP: " + r.status + " (" + r.statusText + ")");
+        const d = await r.json(); 
+        
+        if (r.ok && d.status === "success") {
+            alert(d.message); toggleAuthForms();
+        } else {
+            report.push("🔴 3. رفض داخلي من السيرفر: " + (d.message || "لا توجد رسالة رفض محددة"));
+            alert(report.join("\n\n"));
+        }
+    } catch (err) { 
+        report.push("💥 3. فشل أمني أو انقطاع شبكة (CORS/Failed to fetch)");
+        report.push("📝 تفاصيل رسالة الخطأ: " + err.message);
+        report.push("💡 نصيحة: تأكد أنك تفتح السيرفر الأخضر النشط cd6f من التبويب المتخفي وليس الرابط القديم.");
+        alert(report.join("\n\n")); 
+    }
 }
+
+// 🎯 مصيدة أخطاء السيرفر المجمّعة والشاملة عند تسجيل الدخول
 async function handleLogin(e) {
     if (e) e.preventDefault();
     const u = document.getElementById("login-username").value.trim(), p = document.getElementById("login-pass").value.trim();
     if (!u || !p) return alert("برجاء ملء الحقول");
+    
+    let report = ["📋 تقرير مصيدة أخطاء الدخول المجمّع:"];
     try {
+        report.push("🔹 1. محاولة الاتصال بـ: " + SERVER_URL + "/api/login");
         const r = await fetch(`${SERVER_URL}/api/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p }) });
+        
+        report.push("🔹 2. حالة الـ Response HTTP: " + r.status + " (" + r.statusText + ")");
         const d = await r.json();
-        if (r.ok && d.status === "success") { currentUser = d.user; localStorage.setItem("chat_user", JSON.stringify(d.user)); showChatScreen(); }
-        else { alert("🚨 السيرفر رفض الدخول:\n" + d.message); }
-    } catch (err) { alert("🚨 مصيدة أخطاء السيرفر والشبكة:\n" + err.message); }
+        
+        if (r.ok && d.status === "success") { 
+            currentUser = d.user; localStorage.setItem("chat_user", JSON.stringify(d.user)); showChatScreen(); 
+        } else { 
+            report.push("🔴 3. رفض داخلي من السيرفر: " + (d.message || "بيانات الدخول غير صحيحة"));
+            alert(report.join("\n\n"));
+        }
+    } catch (err) { 
+        report.push("💥 3. فشل أمني أو انقطاع شبكة (CORS/Failed to fetch)");
+        report.push("📝 تفاصيل رسالة الخطأ: " + err.message);
+        alert(report.join("\n\n")); 
+    }
 }
+
 function showChatScreen() {
     document.getElementById("auth-screen").classList.add("hidden"); document.getElementById("chat-screen").classList.remove("hidden");
     document.getElementById("current-user-name").innerText = currentUser.username;
@@ -103,19 +139,3 @@ async function sendMessage() {
     const input = document.getElementById("message-input"); if(!input) return; const txt = input.value.trim(); if (!txt || !activeChatUser) return; input.value = ""; 
     try { await fetch(`${SERVER_URL}/api/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sender_username: currentUser.username, receiver_username: activeChatUser.username, message: txt }) }); fetchActiveChatMessages(); } catch(e){}
 }
-function handleSendMessage(e) { if (e.key === "Enter") sendMessage(); }
-function toggleEmojiBox() { document.getElementById("emoji-box").classList.toggle("hidden"); }
-function insertEmoji(em) { const inp = document.getElementById("message-input"); if(inp) inp.value += em; toggleEmojiBox(); }
-function openMyProfile() { openProfileData(currentUser.username); }
-function openFriendProfile() { if(activeChatUser) openProfileData(activeChatUser.username); }
-async function openProfileData(u) {
-    try {
-        const r = await fetch(`${SERVER_URL}/api/user-profile?username=${u}`), d = await r.json();
-        if(d.status === "success") {
-            document.getElementById("modal-profile-name").innerText = d.user.username; document.getElementById("modal-profile-bio").innerText = d.user.bio;
-            const avaBox = document.getElementById("modal-profile-avatar"); if(avaBox) avaBox.innerHTML = d.user.avatar ? `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<i class="fas fa-user" style="font-size:40px;"></i>`;
-            document.getElementById("profile-modal").classList.remove("hidden");
-        }
-    } catch(e){}
-}
-function closeProfileModal() { document.getElementById("profile-modal").classList.add("hidden"); }
