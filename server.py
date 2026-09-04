@@ -58,6 +58,7 @@ def api_login():
     user_row = cursor.fetchone()
     conn.close()
     if user_row:
+        # التعديل السحري هنا: رجعنا الهيكل كـ dictionary جواه الكلمة عشان الجافا سكريبت يفهمه
         return jsonify({'status': 'success', 'user': {'username': user_row[0]}})
     return jsonify({'status': 'error', 'message': 'اسم المستخدم أو كلمة المرور غير صحيحة!'})
 
@@ -183,5 +184,3 @@ def on_join(data):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
-
-
