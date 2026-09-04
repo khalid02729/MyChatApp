@@ -1,22 +1,49 @@
+
 import os
 import sqlite3
 from flask import Flask, jsonify, request, send_from_directory
 from flask_socketio import SocketIO, emit, join_room
+from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__, template_folder='.', static_folder='.')
-app.config['SECRET_KEY'] = 'whatsapp_secret_key_98765'
+app = Flask(__name__, static_folder='', static_url_path='')
+app.config['SECRET_KEY'] = 'whatsapp_secret_key_123'
+socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60)
 
-socketio = SocketIO(app, cors_allowed_origins="*")
-DB_FILE = 'whatsapp_app.db'
+DATABASE = 'chat_app.db'
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT NOT NULL)')
-    cursor.execute('CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, sender_username TEXT, receiver_username TEXT, message TEXT, time TEXT, deleted_for TEXT DEFAULT "")')
-    cursor.execute('CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, content TEXT, time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS messages (
+                id TEXT PRIMARY KEY,
+                sender_username TEXT NOT NULL,
+                receiver_username TEXT NOT NULL,
+                message TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                deleted_for TEXT DEFAULT ""
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS stories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
 
 init_db()
 
@@ -24,157 +51,162 @@ init_db()
 def index():
     return send_from_directory('.', 'index.html')
 
-@app.route('/<path:path>')
-def send_static(path):
-    return send_from_directory('.', path)
-
 @app.route('/api/register', methods=['POST'])
-def api_register():
+def register():
     data = request.json
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
+    
     if not username or not password:
-        return jsonify({'status': 'error', 'message': 'برجاء ملء جميع الحقول!'})
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+        return jsonify({'status': 'error', 'message': 'برجاء ملء جميع الحقول!'}), 400
+        
+    hashed_password = generate_password_hash(password)
     try:
-        cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
-        conn.commit()
+        with get_db() as conn:
+            conn.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hashed_password))
+            conn.commit()
         return jsonify({'status': 'success', 'message': 'تم تسجيل الحساب بنجاح!'})
     except sqlite3.IntegrityError:
-        return jsonify({'status': 'error', 'message': 'اسم المستخدم مأخوذ بالفعل!'})
-    finally:
-        conn.close()
+        return jsonify({'status': 'error', 'message': 'اسم المستخدم مأخوذ بالفعل!'}), 400
 
 @app.route('/api/login', methods=['POST'])
-def api_login():
+def login():
     data = request.json
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT username FROM users WHERE username = ? AND password = ?', (username, password))
-    user_row = cursor.fetchone()
-    conn.close()
-    if user_row:
-        # التعديل السحري: أخذنا user_row[0] عشان نخلص من القوسين والفاصلة خالص والاسم يرجع صافي
-        return jsonify({'status': 'success', 'user': {'username': user_row[0]}})
-    return jsonify({'status': 'error', 'message': 'اسم المستخدم أو كلمة المرور غير صحيحة!'})
+    
+    with get_db() as conn:
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        
+    if user and check_password_hash(user['password'], password):
+        return jsonify({'status': 'success', 'user': {'username': user['username']}})
+    return jsonify({'status': 'error', 'message': 'اسم المستخدم أو كلمة المرور غير صحيحة'}), 401
 
 @app.route('/api/search', methods=['GET'])
-def api_search():
+def search_user():
     username = request.args.get('username', '').strip()
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT username FROM users WHERE username = ?', (username,))
-    user_row = cursor.fetchone()
-    conn.close()
-    if user_row:
-        return jsonify({'status': 'success', 'user': {'username': user_row[0]}})
-    return jsonify({'status': 'error', 'message': 'المستخدم غير موجود!'})
+    with get_db() as conn:
+        user = conn.execute('SELECT username FROM users WHERE username = ?', (username,)).fetchone()
+    if user:
+        return jsonify({'status': 'success', 'user': {'username': user['username']}})
+    return jsonify({'status': 'error', 'message': 'المستخدم غير موجود!'}), 404
 
 @app.route('/api/active-chats', methods=['GET'])
-def api_active_chats():
-    username = request.args.get('username', '')
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT DISTINCT CASE WHEN sender_username = ? THEN receiver_username ELSE sender_username END as chat_partner FROM messages WHERE sender_username = ? OR receiver_username = ?', (username, username, username))
-    partners = cursor.fetchall()
-    chats_list = []
-    for p in partners:
-        partner_name = p[0]
-        cursor.execute('SELECT message FROM messages WHERE (sender_username = ? AND receiver_username = ?) OR (sender_username = ? AND receiver_username = ?) ORDER BY rowid DESC LIMIT 1', (username, partner_name, partner_name, username))
-        last_msg_row = cursor.fetchone()
-        last_msg = last_msg_row[0] if last_msg_row else ""
-        chats_list.append({'username': partner_name, 'last_message': last_msg})
-    conn.close()
-    return jsonify(chats_list)
+def get_active_chats():
+    username = request.args.get('username', '').strip()
+    with get_db() as conn:
+        chats = conn.execute('''
+            SELECT DISTINCT CASE 
+                WHEN sender_username = ? THEN receiver_username 
+                ELSE sender_username 
+            END as chat_user 
+            FROM messages 
+            WHERE sender_username = ? OR receiver_username = ?
+        ''', (username, username, username)).fetchall()
+        
+        result = []
+        for row in chats:
+            chat_user = row['chat_user']
+            last_msg = conn.execute('''
+                SELECT message FROM messages 
+                WHERE (sender_username = ? AND receiver_username = ?) 
+                   OR (sender_username = ? AND receiver_username = ?) 
+                ORDER BY timestamp DESC LIMIT 1
+            ''', (username, chat_user, chat_user, username)).fetchone()
+            
+            result.append({
+                'username': chat_user,
+                'last_message': last_msg['message'] if last_msg else "...اضغط لبدء الدردشة"
+            })
+            
+    return jsonify(result)
 
 @app.route('/api/messages', methods=['GET'])
-def api_get_messages():
-    sender = request.args.get('sender', '')
-    receiver = request.args.get('receiver', '')
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, sender_username, receiver_username, message, time, deleted_for FROM messages WHERE (sender_username = ? AND receiver_username = ?) OR (sender_username = ? AND receiver_username = ?) ORDER BY rowid ASC', (sender, receiver, receiver, sender))
-    rows = cursor.fetchall()
-    conn.close()
-    messages_list = []
-    for row in rows:
-        messages_list.append({
-            'id': row[0],
-            'sender_username': row[1],
-            'receiver_username': row[2],
-            'message': row[3],
-            'time': row[4],
-            'deleted_for': row[5].split(',') if row[5] else []
-        })
-    return jsonify(messages_list)
+def get_messages():
+    sender = request.args.get('sender')
+    receiver = request.args.get('receiver')
+    with get_db() as conn:
+        messages = conn.execute('''
+            SELECT id, sender_username, receiver_username, message, timestamp, deleted_for 
+            FROM messages 
+            WHERE (sender_username = ? AND receiver_username = ?) 
+               OR (sender_username = ? AND receiver_username = ?) 
+            ORDER BY timestamp ASC
+        ''', (sender, receiver, receiver, sender)).fetchall()
+        
+        return jsonify([dict(msg) for msg in messages])
 
 @app.route('/api/send', methods=['POST'])
-def api_send_message():
+def send_message_api():
     data = request.json
     msg_id = data.get('id')
     sender = data.get('sender_username')
     receiver = data.get('receiver_username')
-    message = data.get('message')
-    time = data.get('time')
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO messages (id, sender_username, receiver_username, message, time) VALUES (?, ?, ?, ?, ?)', (msg_id, sender, receiver, message, time))
-    conn.commit()
-    conn.close()
+    message_text = data.get('message')
+    
+    with get_db() as conn:
+        conn.execute('''
+            INSERT INTO messages (id, sender_username, receiver_username, message) 
+            VALUES (?, ?, ?, ?)
+        ''', (msg_id, sender, receiver, message_text))
+        conn.commit()
+        
+    try:
+        # بث حي ومطور متوافق مع صورتك الأخيرة تماماً لغرفة المرسل والمستقبل
+        socketio.emit('receive_private_message', data, room=sender)
+        socketio.emit('receive_private_message', data, room=receiver)
+    except:
+        pass
+        
     return jsonify({'status': 'success'})
 
 @app.route('/api/delete-message', methods=['POST'])
-def api_delete_message():
+def delete_message_api():
     data = request.json
     msg_id = data.get('msg_id')
     delete_type = data.get('type')
     user = data.get('user')
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    if delete_type == 'me':
-        cursor.execute('SELECT deleted_for FROM messages WHERE id = ?', (msg_id,))
-        row = cursor.fetchone()
-        if row:
-            current_deleted = row[0]
+    
+    with get_db() as conn:
+        if delete_type == 'me':
+            row = conn.execute('SELECT deleted_for FROM messages WHERE id = ?', (msg_id,)).fetchone()
+            current_deleted = row['deleted_for'] if row and row['deleted_for'] else ""
             new_deleted = f"{current_deleted},{user}" if current_deleted else user
-            cursor.execute('UPDATE messages SET deleted_for = ? WHERE id = ?', (new_deleted, msg_id))
-    elif delete_type == 'everyone':
-        cursor.execute('UPDATE messages SET message = "🚫 تم حذف هذه الرسالة" WHERE id = ?', (msg_id,))
-        cursor.execute('SELECT sender_username, receiver_username FROM messages WHERE id = ?', (msg_id,))
-        row = cursor.fetchone()
-        if row:
-            s_user = row[0]
-            r_user = row[1]
-            socketio.emit('message_deleted_for_everyone', {'sender': s_user, 'receiver': r_user}, room=s_user)
-            socketio.emit('message_deleted_for_everyone', {'sender': s_user, 'receiver': r_user}, room=r_user)
-    conn.commit()
-    conn.close()
+            conn.execute('UPDATE messages SET deleted_for = ? WHERE id = ?', (new_deleted, msg_id))
+        elif delete_type == 'everyone':
+            conn.execute('UPDATE messages SET message = "🚫 تم حذف هذه الرسالة" WHERE id = ?', (msg_id,))
+            msg_row = conn.execute('SELECT sender_username, receiver_username FROM messages WHERE id = ?', (msg_id,)).fetchone()
+            if msg_row:
+                socketio.emit('message_deleted_for_everyone', {
+                    'msg_id': msg_id, 
+                    'sender': msg_row['sender_username'], 
+                    'receiver': msg_row['receiver_username']
+                }, room=msg_row['sender_username'])
+                socketio.emit('message_deleted_for_everyone', {
+                    'msg_id': msg_id, 
+                    'sender': msg_row['sender_username'], 
+                    'receiver': msg_row['receiver_username']
+                }, room=msg_row['receiver_username'])
+        conn.commit()
+        
     return jsonify({'status': 'success'})
 
 @app.route('/api/add-story', methods=['POST'])
-def api_add_story():
+def add_story_api():
     data = request.json
     username = data.get('username')
     content = data.get('content')
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO stories (username, content) VALUES (?, ?)', (username, content))
-    conn.commit()
-    conn.close()
+    
+    with get_db() as conn:
+        conn.execute('INSERT INTO stories (username, content) VALUES (?, ?)', (username, content))
+        conn.commit()
     return jsonify({'status': 'success'})
 
 @app.route('/api/stories', methods=['GET'])
-def api_get_stories():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT username, content FROM stories ORDER BY id DESC')
-    rows = cursor.fetchall()
-    conn.close()
-    stories_list = [{'username': r[0], 'content': r[1]} for r in rows]
-    return jsonify(stories_list)
+def get_stories_api():
+    with get_db() as conn:
+        rows = conn.execute('SELECT username, content FROM stories ORDER BY id DESC').fetchall()
+        return jsonify([dict(r) for r in rows])
 
 @socketio.on('join')
 def on_join(data):
