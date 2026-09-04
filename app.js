@@ -1,25 +1,33 @@
-// الرابط المباشر الصحيح والجاهز لسيرفرك أنت بنسبة 100%
-const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
+const SERVER_URL = "https://railway.app"; 
 let socket = null; 
 
 let currentUser = null;
 let activeChatUser = null;
 let activeChats = {}; 
 
+// تم ربط الفورم برمجياً هنا لضمان عمل الأزرار داخل الموبايل بدون مشاكل وتجميد
 document.addEventListener("DOMContentLoaded", () => {
     const savedUser = localStorage.getItem("chat_user");
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
         showChatScreen();
     }
+
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+
+    if (loginForm) loginForm.addEventListener("submit", handleLogin);
+    if (registerForm) registerForm.addEventListener("submit", handleRegister);
 });
 
 function toggleAuthForms() {
-    document.getElementById("login-form").classList.toggle("hidden");
-    document.getElementById("register-form").classList.toggle("hidden");
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+    if (loginForm && registerForm) {
+        loginForm.classList.toggle("hidden");
+        registerForm.classList.toggle("hidden");
+    }
 }
-
-// ================= إدارة الحسابات =================
 
 async function handleRegister(event) {
     if (event) event.preventDefault(); 
@@ -81,9 +89,8 @@ function showChatScreen() {
     loadActiveChatsFromServer();
     
     setInterval(() => {
-        fetchActiveChatMessages();
-        loadActiveChatsFromServer();
-    }, 3000);
+        if (currentUser) loadActiveChatsFromServer();
+    }, 4000);
 }
 
 function initSocketConnection() {
@@ -93,8 +100,16 @@ function initSocketConnection() {
         socket.on("connect", () => {
             socket.emit("join", { username: currentUser.username });
         });
+
+        // استقبال الرسائل الفورية فوراً عبر الـ Socket دون تأخير
+        socket.on("receive_message", (data) => {
+            if (activeChatUser && (data.sender_username === activeChatUser.username || data.receiver_username === activeChatUser.username)) {
+                fetchActiveChatMessages();
+            }
+            loadActiveChatsFromServer();
+        });
     } catch (e) {
-        console.log("Socket holding...");
+        console.log("Socket connection waiting...");
     }
 }
 
@@ -116,8 +131,6 @@ function logout() {
     localStorage.removeItem("chat_user");
     window.location.reload();
 }
-
-// ================= البحث والمحادثات =================
 
 async function handleSearch(event) {
     if (event.key !== "Enter") return;
@@ -211,3 +224,5 @@ function renderMessages() {
         box.appendChild(bubble);
     });
     box.scrollTop = box.scrollHeight;
+}
+
