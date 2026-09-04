@@ -1,173 +1,122 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>واتساب كول</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cloudflare.com">
-    <script src="https://socket.io"></script>
-    
-    <!-- مصيدة الأخطاء الشاملة المطورة بناء على فكرتك الذكية -->
-    <script>
-        // مصفوفة لتجميع كافة الأخطاء في الصفحة
-        window.allErrorsList = [];
-        
-        window.onerror = function(msg, url, line, col, error) {
-            var errorLog = "🔴 خطأ: " + msg + "\n← في السطر: " + line + " (عمود: " + col + ")";
-            window.allErrorsList.push(errorLog);
-            
-            // عرض لستة الأخطاء كاملة ومجمعة في نافذة واحدة فوراً
-            setTimeout(function() {
-                if(window.allErrorsList.length > 0) {
-                    alert("🚨 تقرير الأخطاء الشامل المجمّع:\n\n" + window.allErrorsList.join("\n\n") + "\n\nبرجاء تصوير الشاشة وإرسالها للمعالجة الفورية!");
-                    window.allErrorsList = []; // تفريغ بعد العرض
-                }
-            }, 100);
-            return false;
-        };
-    </script>
-</head>
-<body>
+const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
+let socket = null, currentUser = null, activeChatUser = null, globalAvatarBase64 = "", storyMediaBase64 = "", storyMediaType = "text";
 
-    <!-- شاشة تسجيل الدخول -->
-    <div id="auth-screen" class="screen">
-        <div class="auth-container">
-            <div class="auth-header">
-                <i class="fab fa-whatsapp" style="color:#00a884;font-size:50px;margin-bottom:10px;"></i>
-                <h2>مرحباً بك في واتساب كول</h2>
-            </div>
-            
-            <div id="login-form-box" class="form-box">
-                <h3>تسجيل الدخول</h3>
-                <input type="text" id="login-username" placeholder="اسم المستخدم" required>
-                <input type="password" id="login-pass" placeholder="كلمة المرور" required>
-                <button type="button" onclick="handleLogin(event)">دخول</button>
-                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()" style="color:#00a884; cursor:pointer; font-weight:bold;">إنشاء حساب جديد</span></p>
-            </div>
-
-            <div id="register-form-box" class="form-box hidden">
-                <h3>إنشاء حساب جديد</h3>
-                <div class="avatar-upload-box">
-                    <label for="reg-avatar" class="avatar-label">
-                        <div class="avatar-circle large" id="avatar-preview"><i class="fas fa-camera"></i></div>
-                        <span>اختر صورة شخصية</span>
-                    </label>
-                    <input type="file" id="reg-avatar" accept="image/*" style="display:none;" onchange="previewAvatar(event)">
-                </div>
-                <input type="text" id="reg-username" placeholder="اسم المستخدم الفريد" required>
-                <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
-                <button type="button" onclick="handleRegister(event)">تسجيل وتفعيل الحساب</button>
-                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()" style="color:#00a884; cursor:pointer; font-weight:bold;">تسجيل الدخول</span></p>
-            </div>
-        </div>
-    </div>
-
-    <!-- واجهة الشات الرئيسية المتجاوبة -->
-    <div id="chat-screen" class="screen hidden">
-        <div class="chat-app-container">
-            <aside class="sidebar" id="app-sidebar">
-                <header class="sidebar-header">
-                    <div class="user-profile" onclick="openMyProfile()">
-                        <div class="avatar-circle" id="my-avatar-view"><i class="fas fa-user"></i></div>
-                        <span id="current-user-name" style="font-weight:bold;">المستخدم</span>
-                    </div>
-                    <div class="header-actions">
-                        <button onclick="openStoryModal()" class="header-icon-btn" title="حالة جديدة"><i class="fas fa-circle-notch"></i></button>
-                        <button onclick="logout()" class="logout-btn" title="تسجيل الخروج"><i class="fas fa-sign-out-alt"></i></button>
-                    </div>
-                </header>
-
-                <div class="stories-wrapper">
-                    <h4>الحالات الحديثة</h4>
-                    <div class="stories-bar" id="stories-container"></div>
-                </div>
-
-                <div class="search-bar-container">
-                    <div class="search-wrapper">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="search-username" placeholder="ابحث عن صديق واضغط Enter..." onkeypress="handleSearch(event)">
-                    </div>
-                </div>
-
-                <div class="chats-list" id="chats-list-container"></div>
-            </aside>
-
-            <main class="chat-area hidden-mobile" id="app-chat-area">
-                <div id="welcome-chat-view" class="welcome-view">
-                    <i class="fab fa-whatsapp" style="font-size:70px;color:#ced5d8;margin-bottom:15px;"></i>
-                    <h2>واتساب كول للموبايل والويب</h2>
-                    <p>أرسل واستقبل الرسائل فورياً بصور البروفايل وحذف الرسائل من الطرفين.</p>
-                </div>
-
-                <div id="active-chat-view" class="active-view hidden">
-                    <header class="chat-header">
-                        <button onclick="backToSidebar()" class="back-btn"><i class="fas fa-arrow-right"></i></button>
-                        <div class="active-user-info" onclick="openFriendProfile()">
-                            <div class="avatar-circle" id="active-chat-avatar"><i class="fas fa-user"></i></div>
-                            <div>
-                                <h4 id="active-chat-name">اسم الصديق</h4>
-                                <span id="typing-status" class="typing-text"></span>
-                            </div>
-                        </div>
-                    </header>
-                    
-                    <div class="messages-container" id="messages-box"></div>
-                    
-                    <div class="emoji-drawer hidden" id="emoji-box">
-                        <span onclick="insertEmoji('😀')">😀</span><span onclick="insertEmoji('😂')">😂</span><span onclick="insertEmoji('😍')">😍</span><span onclick="insertEmoji('👍')">👍</span>
-                        <span onclick="insertEmoji('🌹')">🌹</span><span onclick="insertEmoji('🎉')">🎉</span><span onclick="insertEmoji('❤️')">❤️</span>
-                    </div>
-
-                    <footer class="chat-footer">
-                        <button onclick="toggleEmojiBox()" class="footer-icon-btn"><i class="far fa-smile"></i></button>
-                        <input type="text" id="message-input" placeholder="اكتب رسالة..." onkeypress="handleSendMessage(event)" oninput="emitTyping()">
-                        <button onclick="sendMessage()" class="send-btn"><i class="fas fa-paper-plane"></i></button>
-                    </footer>
-                </div>
-            </main>
-        </div>
-    </div>
-
-    <!-- النوافذ العائمة -->
-    <div id="profile-modal" class="modal-backdrop hidden" onclick="closeProfileModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3>الملف الشخصي</h3>
-            <div class="avatar-circle large text-center" id="modal-profile-avatar" style="margin: 15px auto;"></div>
-            <h2 id="modal-profile-name"></h2>
-            <p id="modal-profile-bio"></p>
-            <button onclick="closeProfileModal()" class="close-modal-btn">إغلاق</button>
-        </div>
-    </div>
-
-    <div id="story-modal" class="modal-backdrop hidden" onclick="closeStoryModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3>نشر حالة جديدة</h3>
-            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا..." style="width:100%; padding:10px; margin:15px 0; border:1px solid #ccc; border-radius:8px;">
-            
-            <div style="margin: 10px 0;">
-                <label for="story-file" style="background:#f0f2f5; padding:8px 15px; border-radius:8px; cursor:pointer; display:inline-block; font-size:14px; font-weight:bold; color:#54656f;">
-                    <i class="fas fa-paperclip"></i> ارفق صورة أو فيديو من الموبايل
-                </label>
-                <input type="file" id="story-file" accept="image/*,video/*" style="display:none;" onchange="handleStoryFileSelect(event)">
-                <div id="story-file-status" style="font-size:12px; color:#00a884; margin-top:5px; font-weight:bold;"></div>
-            </div>
-
-            <button onclick="uploadStory()" class="close-modal-btn" style="background:#00a884; margin-top:5px;">نشر الحالة الآن</button>
-        </div>
-    </div>
-
-    <div id="story-view-modal" class="modal-backdrop hidden" onclick="closeStoryViewModal()" style="background:rgba(0,0,0,0.9);">
-        <div class="modal-content" onclick="event.stopPropagation()" style="background:transparent; box-shadow:none; max-width:450px; width:95%;">
-            <h4 id="story-view-username" style="color:white; margin-bottom:15px; text-align:right;"></h4>
-            <div id="story-view-body" style="width:100%; max-height:70vh; display:flex; justify-content:center; align-items:center;"></div>
-            <p id="story-view-text" style="color:white; margin-top:15px; font-size:16px; background:rgba(0,0,0,0.6); padding:10px; border-radius:8px;"></p>
-            <button onclick="closeStoryViewModal()" class="close-modal-btn" style="background:#ea0038; margin-top:20px;">إغلاق الحالة</button>
-        </div>
-    </div>
-
-    <audio id="notif-sound" src="https://mixkit.co" preload="auto"></audio>
-    <script src="app.js?v=2.0"></script>
-    
-</body>
-</html>
+window.onload = function() {
+    try { const u = localStorage.getItem("chat_user"); if (u) { currentUser = JSON.parse(u); showChatScreen(); } } catch (e) {}
+};
+function previewAvatar(e) {
+    const f = e.target.files;
+    if (f) { const r = new FileReader(); r.onload = () => { globalAvatarBase64 = r.result; document.getElementById("avatar-preview").innerHTML = `<img src="${r.result}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`; }; r.readAsDataURL(f); }
+}
+function toggleAuthForms() {
+    document.getElementById("login-form-box").classList.toggle("hidden"); document.getElementById("register-form-box").classList.toggle("hidden");
+}
+async function handleRegister(e) {
+    if (e) e.preventDefault();
+    const u = document.getElementById("reg-username").value.trim(), p = document.getElementById("reg-pass").value.trim();
+    if (!u || !p) return alert("برجاء ملء الحقول");
+    try {
+        const r = await fetch(`${SERVER_URL}/api/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p, avatar: globalAvatarBase64 }) });
+        const d = await r.json(); alert(d.message); if (d.status === "success") toggleAuthForms();
+    } catch (err) { alert("🚨 خطأ في الاتصال بالسيرفر"); }
+}
+async function handleLogin(e) {
+    if (e) e.preventDefault();
+    const u = document.getElementById("login-username").value.trim(), p = document.getElementById("login-pass").value.trim();
+    if (!u || !p) return alert("برجاء ملء الحقول");
+    try {
+        const r = await fetch(`${SERVER_URL}/api/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p }) });
+        const d = await r.json();
+        if (r.ok && d.status === "success") { currentUser = d.user; localStorage.setItem("chat_user", JSON.stringify(d.user)); showChatScreen(); }
+        else { alert("🚨 السيرفر رفض الدخول:\n" + d.message); }
+    } catch (err) { alert("🚨 خطأ بالاتصال بالسيرفر"); }
+}
+function showChatScreen() {
+    document.getElementById("auth-screen").classList.add("hidden"); document.getElementById("chat-screen").classList.remove("hidden");
+    document.getElementById("current-user-name").innerText = currentUser.username;
+    if (currentUser.avatar) document.getElementById("my-avatar-view").innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    initSocketConnection(); loadActiveChatsFromServer(); loadStories();
+    setInterval(() => { if (currentUser) { loadActiveChatsFromServer(); loadStories(); } }, 5000);
+}
+function initSocketConnection() {
+    if (typeof io === 'undefined') return;
+    try {
+        socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
+        socket.on("connect", () => { socket.emit("join", { username: currentUser.username }); });
+        socket.on("receive_message", (d) => {
+            const s = document.getElementById("notif-sound"); if(s) s.play().catch(()=>{});
+            if (activeChatUser && (d.sender_username === activeChatUser.username || d.receiver_username === activeChatUser.username)) fetchActiveChatMessages();
+            loadActiveChatsFromServer();
+        });
+        socket.on("message_deleted", () => { if (activeChatUser) fetchActiveChatMessages(); });
+        socket.on("display_typing", (d) => { if (activeChatUser && d.sender === activeChatUser.username) document.getElementById("typing-status").innerText = d.typing ? "يكتب الآن..." : ""; });
+    } catch (e) {}
+}
+function emitTyping() {
+    if (!activeChatUser || !socket) return;
+    socket.emit("typing", { sender: currentUser.username, receiver: activeChatUser.username, typing: true });
+    clearTimeout(window.typingTimeout); window.typingTimeout = setTimeout(() => { socket.emit("typing", { sender: currentUser.username, receiver: activeChatUser.username, typing: false }); }, 2000);
+}
+function openChat(u, a = "") {
+    activeChatUser = { username: u }; document.getElementById("app-sidebar").classList.add("hidden-mobile"); document.getElementById("app-chat-area").classList.remove("hidden-mobile");
+    document.getElementById("welcome-chat-view").classList.add("hidden"); document.getElementById("active-chat-view").classList.remove("hidden");
+    document.getElementById("active-chat-name").innerText = u; const box = document.getElementById("active-chat-avatar");
+    if(box) box.innerHTML = a ? `<img src="${a}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<i class="fas fa-user"></i>`;
+    fetchActiveChatMessages();
+}
+function backToSidebar() { document.getElementById("app-sidebar").classList.remove("hidden-mobile"); document.getElementById("app-chat-area").classList.add("hidden-mobile"); activeChatUser = null; }
+async function loadActiveChatsFromServer() {
+    try {
+        const r = await fetch(`${SERVER_URL}/api/active-chats?username=${currentUser.username}`), c = await r.json(), container = document.getElementById("chats-list-container"); if(!container) return; container.innerHTML = "";
+        if (c.length === 0) { container.innerHTML = `<div class="no-chats">لا توجد محادثات. ابحث عن صديق لبدء دردشة!</div>`; return; }
+        c.forEach(chat => {
+            const isActive = activeChatUser && activeChatUser.username === chat.username ? "active" : "";
+            const item = document.createElement("div"); item.className = `chat-item ${isActive}`;
+            item.onclick = () => { const img = item.querySelector('.avatar-circle img'); openChat(chat.username, img ? img.src : ""); };
+            item.innerHTML = `<div class="avatar-circle" id="chat-ava-${chat.username}"><i class="fas fa-user"></i></div><div class="chat-item-info"><h4>${chat.username}</h4><p>${chat.last_message}</p></div>`; container.appendChild(item);
+            fetch(`${SERVER_URL}/api/user-profile?username=${chat.username}`).then(res => res.json()).then(d => {
+                if(d.status === "success" && d.user.avatar) { const b = document.getElementById(`chat-ava-${chat.username}`); if(b) b.innerHTML = `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`; }
+            }).catch(()=>{});
+        });
+    } catch (err) {}
+}
+async function handleSearch(e) {
+    if (e.key !== "Enter") return; const u = document.getElementById("search-username").value.trim(); if (!u || u === currentUser.username) return;
+    try {
+        const r = await fetch(`${SERVER_URL}/api/search?username=${u}`), d = await r.json();
+        if (d.status === "success") { document.getElementById("search-username").value = ""; openChat(d.user.username, d.user.avatar); } else { alert(d.message); }
+    } catch (err) { alert("خطأ أثناء البحث"); }
+}
+async function fetchActiveChatMessages() {
+    if (!activeChatUser) return;
+    try {
+        const r = await fetch(`${SERVER_URL}/api/messages?sender=${currentUser.username}&receiver=${activeChatUser.username}`), m = await r.json(), box = document.getElementById("messages-box"); if(!box) return; box.innerHTML = "";
+        m.forEach(msg => {
+            const isMe = msg.sender_username === currentUser.username, bubble = document.createElement("div"); bubble.className = `msg-bubble ${isMe ? 'sent' : 'received'}`; bubble.innerText = msg.message;
+            if (!msg.deleted_for_all && isMe) { bubble.style.cursor = "pointer"; bubble.onclick = () => { if(confirm("هل تريد حذف هذه الرسالة لدى الجميع؟")) triggerDeleteMessage(msg.id); }; } box.appendChild(bubble);
+        });
+        box.scrollTop = box.scrollHeight;
+    } catch (err) {}
+}
+async function triggerDeleteMessage(id) { try { await fetch(`${SERVER_URL}/api/delete-message`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: id, sender_username: currentUser.username, receiver_username: activeChatUser.username }) }); fetchActiveChatMessages(); } catch(e){} }
+async function sendMessage() {
+    const input = document.getElementById("message-input"); if(!input) return; const txt = input.value.trim(); if (!txt || !activeChatUser) return; input.value = ""; 
+    try { await fetch(`${SERVER_URL}/api/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sender_username: currentUser.username, receiver_username: activeChatUser.username, message: txt }) }); fetchActiveChatMessages(); } catch(e){}
+}
+function handleSendMessage(e) { if (e.key === "Enter") sendMessage(); }
+function toggleEmojiBox() { document.getElementById("emoji-box").classList.toggle("hidden"); }
+function insertEmoji(em) { const inp = document.getElementById("message-input"); if(inp) inp.value += em; toggleEmojiBox(); }
+function openMyProfile() { openProfileData(currentUser.username); }
+function openFriendProfile() { if(activeChatUser) openProfileData(activeChatUser.username); }
+async function openProfileData(u) {
+    try {
+        const r = await fetch(`${SERVER_URL}/api/user-profile?username=${u}`), d = await r.json();
+        if(d.status === "success") {
+            document.getElementById("modal-profile-name").innerText = d.user.username; document.getElementById("modal-profile-bio").innerText = d.user.bio;
+            const avaBox = document.getElementById("modal-profile-avatar"); if(avaBox) avaBox.innerHTML = d.user.avatar ? `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<i class="fas fa-user" style="font-size:40px;"></i>`;
+            document.getElementById("profile-modal").classList.remove("hidden");
+        }
+    } catch(e){}
+}
+function closeProfileModal() { document.getElementById("profile-modal").classList.add("hidden"); }
+function openStoryModal() { document.getElementById("story-modal").classList.remove("hidden"); }
