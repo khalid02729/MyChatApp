@@ -1,5 +1,4 @@
-const SERVER_URL = "const SERVER_URL = window.location.origin;
-    "; 
+const SERVER_URL = window.location.protocol + "//" + window.location.host;
 let socket = null, currentUser = null, activeChatUser = null, activeChats = {}, globalAvatarBase64 = "";
 let storyMediaBase64 = "", storyMediaType = "text";
 
@@ -12,13 +11,13 @@ window.onload = function() {
 
 function previewAvatar(event) {
     const file = event.target.files;
-    if (file && file) {
+    if (file && file[0]) {
         const reader = new FileReader();
         reader.onload = function() {
             globalAvatarBase64 = reader.result;
             document.getElementById("avatar-preview").innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(file[0]);
     }
 }
 
