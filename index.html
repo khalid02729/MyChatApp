@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cloudflare.com">
     <script src="https://socket.io"></script>
     
-    <!-- مصيدة الأخطاء السحرية لقراءة أي مشكلة على الموبايل فورا -->
     <script>
         window.onerror = function(msg, url, line) {
             alert("🚨 قفشنا الغلط البرمجي:\n" + msg + "\nفي السطر: " + line);
@@ -16,16 +15,14 @@
         };
     </script>
     
-    <!-- استدعاء ملف الجافا سكريبت المصلح -->
     <script src="app.js"></script>
 </head>
 <body>
 
-    <!-- شاشة تسجيل الدخول -->
     <div id="auth-screen" class="screen">
         <div class="auth-container">
             <div class="auth-header">
-                <i class="fab fa-whatsapp" style="color:#ff0000;font-size:50px;margin-bottom:10px;"></i>
+                <i class="fab fa-whatsapp" style="color:#00a884;font-size:50px;margin-bottom:10px;"></i>
                 <h2>مرحباً بك في واتساب كول</h2>
             </div>
             
@@ -33,8 +30,8 @@
                 <h3>تسجيل الدخول</h3>
                 <input type="text" id="login-username" placeholder="اسم المستخدم" required>
                 <input type="password" id="login-pass" placeholder="كلمة المرور" required>
-                <button type="submit" style="background-color: #ff0000;">دخول</button>
-                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()" style="color:#ff0000; cursor:pointer; font-weight:bold;">إنشاء حساب جديد</span></p>
+                <button type="submit">دخول</button>
+                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()" style="color:#00a884; cursor:pointer; font-weight:bold;">إنشاء حساب جديد</span></p>
             </form>
 
             <form id="register-form" class="form-box hidden" onsubmit="handleRegister(event)">
@@ -48,13 +45,12 @@
                 </div>
                 <input type="text" id="reg-username" placeholder="اسم المستخدم الفريد" required>
                 <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
-                <button type="submit" style="background-color: #ff0000;">تسجيل وتفعيل الحساب</button>
-                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()" style="color:#ff0000; cursor:pointer; font-weight:bold;">تسجيل الدخول</span></p>
+                <button type="submit">تسجيل وتفعيل الحساب</button>
+                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()" style="color:#00a884; cursor:pointer; font-weight:bold;">تسجيل الدخول</span></p>
             </form>
         </div>
     </div>
 
-    <!-- واجهة الشات الرئيسية المتجاوبة -->
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
             <aside class="sidebar" id="app-sidebar">
@@ -63,9 +59,9 @@
                         <div class="avatar-circle" id="my-avatar-view"><i class="fas fa-user"></i></div>
                         <span id="current-user-name" style="font-weight:bold;">المستخدم</span>
                     </div>
-                    <div>
-                        <button onclick="openStoryModal()" class="header-icon-btn"><i class="fas fa-circle-notch"></i></button>
-                        <button onclick="logout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                    <div class="header-actions">
+                        <button onclick="openStoryModal()" class="header-icon-btn" title="حالة جديدة"><i class="fas fa-circle-notch"></i></button>
+                        <button onclick="logout()" class="logout-btn" title="تسجيل الخروج"><i class="fas fa-sign-out-alt"></i></button>
                     </div>
                 </header>
 
@@ -113,14 +109,13 @@
                     <footer class="chat-footer">
                         <button onclick="toggleEmojiBox()" class="footer-icon-btn"><i class="far fa-smile"></i></button>
                         <input type="text" id="message-input" placeholder="اكتب رسالة..." onkeypress="handleSendMessage(event)" oninput="emitTyping()">
-                        <button onclick="sendMessage()" class="send-btn" style="background-color: #ff0000;"><i class="fas fa-paper-plane"></i></button>
+                        <button onclick="sendMessage()" class="send-btn"><i class="fas fa-paper-plane"></i></button>
                     </footer>
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- النوافذ العائمة المصلحة تماماً -->
     <div id="profile-modal" class="modal-backdrop hidden" onclick="closeProfileModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>الملف الشخصي</h3>
@@ -134,8 +129,26 @@
     <div id="story-modal" class="modal-backdrop hidden" onclick="closeStoryModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>نشر حالة جديدة</h3>
-            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا..." style="width:100%; padding:10px; margin:15px 0; border:1px solid #ccc; border-radius:8px;">
-            <button onclick="uploadStory()" class="close-modal-btn" style="background:#ff0000;">نشر الحالة</button>
+            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا..." style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:8px;">
+            
+            <div style="margin: 10px 0;">
+                <label for="story-file" style="background:#f0f2f5; padding:8px 15px; border-radius:8px; cursor:pointer; display:inline-block; font-size:14px; font-weight:bold; color:#54656f;">
+                    <i class="fas fa-paperclip"></i> ارفق صورة أو فيديو من الموبايل
+                </label>
+                <input type="file" id="story-file" accept="image/*,video/*" style="display:none;" onchange="handleStoryFileSelect(event)">
+                <div id="story-file-status" style="font-size:12px; color:#00a884; margin-top:5px; font-weight:bold;"></div>
+            </div>
+
+            <button onclick="uploadStory()" class="close-modal-btn" style="background:#00a884; margin-top:5px;">نشر الحالة الآن</button>
+        </div>
+    </div>
+
+    <div id="story-view-modal" class="modal-backdrop hidden" onclick="closeStoryViewModal()" style="background:rgba(0,0,0,0.9);">
+        <div class="modal-content" onclick="event.stopPropagation()" style="background:transparent; box-shadow:none; max-width:450px; width:95%;">
+            <h4 id="story-view-username" style="color:white; margin-bottom:15px; text-align:right;"></h4>
+            <div id="story-view-body" style="width:100%; max-height:70vh; display:flex; justify-content:center; align-items:center;"></div>
+            <p id="story-view-text" style="color:white; margin-top:15px; font-size:16px; background:rgba(0,0,0,0.6); padding:10px; border-radius:8px;"></p>
+            <button onclick="closeStoryViewModal()" class="close-modal-btn" style="background:#ea0038; margin-top:20px;">إغلاق الحالة</button>
         </div>
     </div>
 
