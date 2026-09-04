@@ -10,7 +10,7 @@
 </head>
 <body>
 
-    <!-- شاشة تسجيل الدخول (لم نلمسها بناءً على طلبك) -->
+    <!-- شاشة تسجيل الدخول -->
     <div id="auth-screen" class="screen">
         <div class="auth-container">
             <div class="auth-header">
@@ -23,7 +23,7 @@
                 <input type="text" id="login-username" placeholder="اسم المستخدم" required>
                 <input type="password" id="login-pass" placeholder="كلمة المرور" required>
                 <button type="submit">دخول</button>
-                <p>ليس لديك حساب？ <span onclick="toggleAuthForms()">إنشاء حساب جديد</span></p>
+                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()">إنشاء حساب جديد</span></p>
             </form>
 
             <form id="register-form" class="form-box hidden" onsubmit="handleRegister(event)">
@@ -36,11 +36,10 @@
         </div>
     </div>
 
-    <!-- واجهة الشات الرئيسية (تم تنظيمها لتصبح حتة واحدة متناسقة) -->
+    <!-- واجهة الشات الرئيسية -->
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
             
-            <!-- القائمة الجانبية اليمنى -->
             <aside class="sidebar">
                 <header class="sidebar-header">
                     <div class="user-profile">
@@ -50,7 +49,7 @@
                     <button onclick="logout()" class="logout-btn">خروج</button>
                 </header>
 
-                <!-- 🔍 شريط البحث (من الأعلى) -->
+                <!-- شريط البحث -->
                 <div class="search-bar-container">
                     <div class="search-wrapper">
                         <i class="fas fa-search search-icon"></i>
@@ -58,32 +57,9 @@
                     </div>
                 </div>
 
-                <!-- 🌟 شريط الحالات (الستوري) - مضاف أسفل البحث ومنظم طوليًا -->
-                <div class="stories-wrapper">
-                    <h5 class="section-title">الحالات الأخيرة</h5>
-                    <div class="stories-container" id="stories-box">
-                        <!-- حالة المستخدم الشخصية لإضافة حالة جديدة -->
-                        <div class="story-item my-story" onclick="addNewStory()">
-                            <div class="story-avatar add-story">
-                                <i class="fas fa-plus"></i>
-                            </div>
-                            <span>حالتك</span>
-                        </div>
-                        <!-- الحالات المضافة من الأصدقاء بتنزل هنا ديناميكيًا بالجافاسكريبت -->
-                        <div class="story-item">
-                            <div class="story-avatar unread">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <span>أحمد</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- قائمة المحادثات (الشاتات) -->
                 <div class="chats-list" id="chats-list-container"></div>
             </aside>
 
-            <!-- منطقة الشات الكبيرة (الجانب الأيسر متصل تمامًا) -->
             <main class="chat-area">
                 <div id="welcome-chat-view" class="welcome-view">
                     <i class="fab fa-whatsapp" style="font-size: 70px; color: #ced5d8; margin-bottom: 15px;"></i>
@@ -93,55 +69,19 @@
 
                 <div id="active-chat-view" class="active-view hidden">
                     <header class="chat-header">
-                        <!-- زر الرجوع للموبايل فقط ليرجع للقائمة الجانبية -->
-                        <button class="back-btn" onclick="backToSidebar()"><i class="fas fa-arrow-right"></i></button>
                         <div class="active-user-info">
                             <div class="avatar-circle"><i class="fas fa-user"></i></div>
                             <h4 id="active-chat-name">اسم الصديق</h4>
                         </div>
                     </header>
-
-                    <!-- منطقة عرض الرسائل (مهيأة لظهور خيارات الحذف عند الضغط على الرسالة) -->
-                    <div class="messages-container" id="messages-box">
-                        <!-- مثال لشكل الرسالة مع زر القائمة والخيارات (تولّد بالجافاسكريبت لاحقًا) -->
-                        <!-- 
-                        <div class="message-bubble sent">
-                            <p class="message-text">أهلاً بك</p>
-                            <span class="message-time">10:00 م</span>
-                            <div class="message-options" onclick="toggleMessageMenu(this)">
-                                <i class="fas fa-chevron-down"></i>
-                                <div class="options-menu hidden">
-                                    <button onclick="deleteForMe('msg_id')">حذف لدي</button>
-                                    <button onclick="deleteForEveryone('msg_id')">حذف لدى الجميع</button>
-                                </div>
-                            </div>
-                        </div> 
-                        -->
-                    </div>
-
-                    <!-- الـ Footer الجديد مع زرار الإيموجي والمظهر المتناسق -->
+                    <div class="messages-container" id="messages-box"></div>
                     <footer class="chat-footer">
-                        <button id="emoji-trigger-btn" class="emoji-btn" onclick="toggleEmojiPicker()">
-                            <i class="far fa-smile"></i>
-                        </button>
                         <input type="text" id="message-input" placeholder="اكتب رسالة واضغط Enter..." onkeypress="handleSendMessage(event)">
                         <button onclick="sendMessage()" class="send-btn"><i class="fas fa-paper-plane"></i></button>
                     </footer>
                 </div>
             </main>
         </div>
-    </div>
-
-    <!-- لوحة اختيار الإيموجي السريعة (مخفية وتظهر فوق حقل الكتابة) -->
-    <div id="emoji-picker" class="emoji-picker-popup hidden">
-        <span onclick="appendEmoji('😀')">😀</span>
-        <span onclick="appendEmoji('😂')">😂</span>
-        <span onclick="appendEmoji('❤️')">❤️</span>
-        <span onclick="appendEmoji('👍')">👍</span>
-        <span onclick="appendEmoji('🌹')">🌹</span>
-        <span onclick="appendEmoji('🙏')">🙏</span>
-        <span onclick="appendEmoji('🔥')">🔥</span>
-        <span onclick="appendEmoji('غ')">😮</span>
     </div>
 
     <script src="app.js" defer></script>
