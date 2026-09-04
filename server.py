@@ -1,11 +1,15 @@
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room
+from flask_cors import CORS  # تم إضافة مكتبة لمنع حظر اتصال المتصفحات بالـ API
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.config['SECRET_KEY'] = 'whatsapp_secret_key_123'
+
+# تفعيل الـ CORS لحل مشكلة الاتصال تماماً بين التطبيق والسيرفر
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60)
 
 DATABASE = 'chat_app.db'
