@@ -1,14 +1,13 @@
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room
-from flask_cors import CORS  # تم إضافة مكتبة لمنع حظر اتصال المتصفحات بالـ API
+from flask_cors import CORS
 import sqlite3
+import base64
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-app.config['SECRET_KEY'] = 'whatsapp_secret_key_123'
-
-# تفعيل الـ CORS لحل مشكلة الاتصال تماماً بين التطبيق والسيرفر
+app.config['SECRET_KEY'] = 'whatsapp_super_secret_key'
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60)
 
@@ -25,7 +24,9 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
+                password TEXT NOT NULL,
+                avatar TEXT,
+                bio TEXT DEFAULT 'متاح استخدام واتساب كول'
             )
         ''')
         conn.execute('''
@@ -34,6 +35,15 @@ def init_db():
                 sender_username TEXT NOT NULL,
                 receiver_username TEXT NOT NULL,
                 message TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                deleted_for_all INTEGER DEFAULT 0
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS stories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                content TEXT NOT NULL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -45,19 +55,20 @@ init_db()
 def index():
     return send_from_directory('.', 'index.html')
 
-# ================= مسارات الـ API =================
+# ================= مسارات الـ API المطورة =================
 
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
+    avatar = data.get('avatar', '') # Base64 Image
     if not username or not password:
         return jsonify({'status': 'error', 'message': 'برجاء ملء جميع الحقول'}), 400
     hashed_password = generate_password_hash(password)
     try:
         with get_db() as conn:
-            conn.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hashed_password))
+            conn.execute('INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)', (username, hashed_password, avatar))
             conn.commit()
         return jsonify({'status': 'success', 'message': 'تم تسجيل الحساب بنجاح!'})
     except sqlite3.IntegrityError:
@@ -69,41 +80,39 @@ def login():
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
     with get_db() as conn:
-        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        user = conn.execute('SELECT * VALUES FROM users WHERE username = ?', (username,)).fetchone()
     if user and check_password_hash(user['password'], password):
-        return jsonify({'status': 'success', 'user': {'username': user['username']}})
+        return jsonify({'status': 'success', 'user': {'username': user['username'], 'avatar': user['avatar'], 'bio': user['bio']}})
     return jsonify({'status': 'error', 'message': 'اسم المستخدم أو كلمة المرور غير صحيحة'}), 401
+
+@app.route('/api/update-profile', methods=['POST'])
+def update_profile():
+    data = request.json
+    username = data.get('username')
+    avatar = data.get('avatar')
+    bio = data.get('bio')
+    with get_db() as conn:
+        conn.execute('UPDATE users SET avatar = ?, bio = ? WHERE username = ?', (avatar, bio, username))
+        conn.commit()
+    return jsonify({'status': 'success'})
+
+@app.route('/api/user-profile', methods=['GET'])
+def user_profile():
+    username = request.args.get('username')
+    with get_db() as conn:
+        user = conn.execute('SELECT username, avatar, bio FROM users WHERE username = ?', (username,)).fetchone()
+    if user:
+        return jsonify({'status': 'success', 'user': dict(user)})
+    return jsonify({'status': 'error'})
 
 @app.route('/api/search', methods=['GET'])
 def search_user():
     username = request.args.get('username', '').strip()
     with get_db() as conn:
-        user = conn.execute('SELECT username FROM users WHERE username = ?', (username,)).fetchone()
+        user = conn.execute('SELECT username, avatar FROM users WHERE username = ?', (username,)).fetchone()
     if user:
-        return jsonify({'status': 'success', 'user': {'username': user['username']}})
+        return jsonify({'status': 'success', 'user': dict(user)})
     return jsonify({'status': 'error', 'message': 'المستخدم غير موجود'}), 404
-
-@app.route('/api/active-chats', methods=['GET'])
-def get_active_chats():
-    username = request.args.get('username', '').strip()
-    with get_db() as conn:
-        chats = conn.execute('''
-            SELECT DISTINCT CASE WHEN sender_username = ? THEN receiver_username ELSE sender_username END as chat_user
-            FROM messages WHERE sender_username = ? OR receiver_username = ?
-        ''', (username, username, username)).fetchall()
-        result = []
-        for row in chats:
-            chat_user = row['chat_user']
-            last_msg = conn.execute('''
-                SELECT message FROM messages 
-                WHERE (sender_username = ? AND receiver_username = ?) OR (sender_username = ? AND receiver_username = ?)
-                ORDER BY id DESC LIMIT 1
-            ''', (username, chat_user, chat_user, username)).fetchone()
-            result.append({
-                'username': chat_user,
-                'last_message': last_msg['message'] if last_msg else "اضغط لبدء الدردشة..."
-            })
-    return jsonify(result)
 
 @app.route('/api/messages', methods=['GET'])
 def get_messages():
@@ -111,7 +120,7 @@ def get_messages():
     receiver = request.args.get('receiver')
     with get_db() as conn:
         messages = conn.execute('''
-            SELECT sender_username, receiver_username, message, timestamp FROM messages 
+            SELECT id, sender_username, receiver_username, message, timestamp, deleted_for_all FROM messages 
             WHERE (sender_username = ? AND receiver_username = ?) OR (sender_username = ? AND receiver_username = ?)
             ORDER BY timestamp ASC
         ''', (sender, receiver, receiver, sender)).fetchall()
@@ -124,8 +133,10 @@ def send_message_api():
     receiver = data.get('receiver_username')
     message_text = data.get('message')
     with get_db() as conn:
-        conn.execute('INSERT INTO messages (sender_username, receiver_username, message) VALUES (?, ?, ?)', (sender, receiver, message_text))
+        cursor = conn.execute('INSERT INTO messages (sender_username, receiver_username, message) VALUES (?, ?, ?)', (sender, receiver, message_text))
+        msg_id = cursor.lastrowid
         conn.commit()
+    data['id'] = msg_id
     try:
         socketio.emit('receive_message', data, room=receiver)
         socketio.emit('receive_message', data, room=sender)
@@ -133,11 +144,47 @@ def send_message_api():
         pass
     return jsonify({'status': 'success'})
 
+@app.route('/api/delete-message', methods=['POST'])
+def delete_message():
+    data = request.json
+    msg_id = data.get('id')
+    receiver = data.get('receiver_username')
+    sender = data.get('sender_username')
+    with get_db() as conn:
+        conn.execute('UPDATE messages SET message = "🚫 تم حذف هذه الرسالة", deleted_for_all = 1 WHERE id = ?', (msg_id,))
+        conn.commit()
+    socketio.emit('message_deleted', {'id': msg_id}, room=receiver)
+    socketio.emit('message_deleted', {'id': msg_id}, room=sender)
+    return jsonify({'status': 'success'})
+
+@app.route('/api/stories', methods=['GET', 'POST'])
+def handle_stories():
+    if request.method == 'POST':
+        data = request.json
+        username = data.get('username')
+        content = data.get('content') # Base64 Image or Text
+        with get_db() as conn:
+            conn.execute('INSERT INTO stories (username, content) VALUES (?, ?)', (username, content))
+            conn.commit()
+        return jsonify({'status': 'success'})
+    else:
+        with get_db() as conn:
+            stories = conn.execute('''
+                SELECT s.*, u.avatar FROM stories s 
+                JOIN users u ON s.username = u.username
+                WHERE s.timestamp >= datetime('now', '-1 day')
+                ORDER BY s.id DESC
+            ''').fetchall()
+        return jsonify([dict(st) for st in stories])
+
 @socketio.on('join')
 def on_join(data):
-    username = data['username']
-    join_room(username)
+    join_room(data['username'])
+
+@socketio.on('typing')
+def on_typing(data):
+    emit('display_typing', data, room=data['receiver'])
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0
