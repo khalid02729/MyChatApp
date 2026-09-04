@@ -7,6 +7,16 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cloudflare.com">
     <script src="https://socket.io"></script>
+    
+    <!-- مصيدة الأخطاء السحرية لقراءة أي مشكلة على الموبايل فورا -->
+    <script>
+        window.onerror = function(msg, url, line) {
+            alert("🚨 قفشنا الغلط البرمجي:\n" + msg + "\nفي السطر: " + line);
+            return false;
+        };
+    </script>
+    
+    <!-- استدعاء ملف الجافا سكريبت المصلح -->
     <script src="app.js"></script>
 </head>
 <body>
@@ -23,9 +33,7 @@
                 <h3>تسجيل الدخول</h3>
                 <input type="text" id="login-username" placeholder="اسم المستخدم" required>
                 <input type="password" id="login-pass" placeholder="كلمة المرور" required>
-                <!-- تم تغيير لون الزر هنا برمجياً للأحمر للاختبار -->
                 <button type="submit" style="background-color: #ff0000;">دخول</button>
-                <!-- تم تغيير لون جملة إنشاء حساب للأحمر الفاقع للاختبار -->
                 <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()" style="color:#ff0000; cursor:pointer; font-weight:bold;">إنشاء حساب جديد</span></p>
             </form>
 
@@ -112,6 +120,7 @@
         </div>
     </div>
 
+    <!-- النوافذ العائمة المصلحة تماماً -->
     <div id="profile-modal" class="modal-backdrop hidden" onclick="closeProfileModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>الملف الشخصي</h3>
