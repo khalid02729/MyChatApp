@@ -5,19 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>واتساب كول</title>
     <link rel="stylesheet" href="style.css">
-    
-    <!-- روابط صحيحة ومحدثة للأيقونات والمكتبات لحل مشكلة تجميد الشاشة -->
     <link rel="stylesheet" href="https://cloudflare.com">
     <script src="https://socket.io"></script>
 </head>
 <body>
 
-    <!-- شاشة تسجيل الدخول -->
+    <!-- شاشة تسجيل الدخول المحدثة بالصورة الشخصية -->
     <div id="auth-screen" class="screen">
         <div class="auth-container">
             <div class="auth-header">
                 <i class="fab fa-whatsapp" style="color: #00a884; font-size: 50px; margin-bottom: 10px;"></i>
-                <h2>مرحباً بك في واتساب</h2>
+                <h2>مرحباً بك في واتساب كول</h2>
             </div>
             
             <form id="login-form" class="form-box">
@@ -25,66 +23,122 @@
                 <input type="text" id="login-username" placeholder="اسم المستخدم" required>
                 <input type="password" id="login-pass" placeholder="كلمة المرور" required>
                 <button type="submit">دخول</button>
-                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()" style="cursor: pointer; color: #00a884;">إنشاء حساب جديد</span></p>
+                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()">إنشاء حساب جديد</span></p>
             </form>
 
             <form id="register-form" class="form-box hidden">
                 <h3>إنشاء حساب جديد</h3>
+                <div class="avatar-upload-box">
+                    <label for="reg-avatar" class="avatar-label">
+                        <div class="avatar-circle large" id="avatar-preview"><i class="fas fa-camera"></i></div>
+                        <span>اختر صورة شخصية</span>
+                    </label>
+                    <input type="file" id="reg-avatar" accept="image/*" style="display:none;" onchange="previewAvatar(event)">
+                </div>
                 <input type="text" id="reg-username" placeholder="اسم المستخدم الفريد" required>
                 <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
-                <button type="submit">تسجيل الحساب</button>
-                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()" style="cursor: pointer; color: #00a884;">تسجيل الدخول</span></p>
+                <button type="submit">تسجيل وتفعيل الحساب</button>
+                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()">تسجيل الدخول</span></p>
             </form>
         </div>
     </div>
 
-    <!-- واجهة الشات الرئيسية -->
+    <!-- واجهة الشات الرئيسية المتجاوبة (واتساب الحقيقي) -->
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
             
-            <aside class="sidebar">
+            <!-- القائمة الجانبية (الشاشة الرئيسية على الموبايل) -->
+            <aside class="sidebar" id="app-sidebar">
                 <header class="sidebar-header">
-                    <div class="user-profile">
-                        <div class="avatar-circle"><i class="fas fa-user"></i></div>
+                    <div class="user-profile" onclick="openMyProfileModal()">
+                        <div class="avatar-circle" id="my-avatar-view"><i class="fas fa-user"></i></div>
                         <span id="current-user-name" style="font-weight: bold;">المستخدم</span>
                     </div>
-                    <button onclick="logout()" class="logout-btn">خروج</button>
+                    <div>
+                        <button onclick="openStoryModal()" class="header-icon-btn"><i class="fas fa-circle-notch"></i></button>
+                        <button onclick="logout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                    </div>
                 </header>
+
+                <!-- قسم الستوري / الحالات المحدث -->
+                <div class="stories-wrapper">
+                    <h4>الحالات الحديثة</h4>
+                    <div class="stories-bar" id="stories-container">
+                        <!-- الحالات تظهر هنا تلقائياً -->
+                    </div>
+                </div>
 
                 <!-- شريط البحث -->
                 <div class="search-bar-container">
                     <div class="search-wrapper">
                         <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="search-username" placeholder="ابحث عن شخص بالاسم واضغط Enter..." onkeypress="handleSearch(event)">
+                        <input type="text" id="search-username" placeholder="ابحث عن صديق واضغط Enter..." onkeypress="handleSearch(event)">
                     </div>
                 </div>
 
                 <div class="chats-list" id="chats-list-container"></div>
             </aside>
 
-            <main class="chat-area">
+            <!-- منطقة الرسائل (تفتح في شاشة كاملة عند الضغط على صديق في الموبايل) -->
+            <main class="chat-area hidden-mobile" id="app-chat-area">
                 <div id="welcome-chat-view" class="welcome-view">
                     <i class="fab fa-whatsapp" style="font-size: 70px; color: #ced5d8; margin-bottom: 15px;"></i>
-                    <h2>واتساب للويب</h2>
-                    <p>أرسل واستقبل الرسائل فورياً دون الحاجة لإبقاء هاتفك متصلاً.</p>
+                    <h2>واتساب كول للموبايل والويب</h2>
+                    <p>أرسل واستقبل الرسائل فورياً بصور البروفايل وحذف الرسائل من الطرفين.</p>
                 </div>
 
                 <div id="active-chat-view" class="active-view hidden">
                     <header class="chat-header">
-                        <div class="active-user-info">
-                            <div class="avatar-circle"><i class="fas fa-user"></i></div>
-                            <h4 id="active-chat-name">اسم الصديق</h4>
+                        <button onclick="backToSidebar()" class="back-btn"><i class="fas fa-arrow-right"></i></button>
+                        <div class="active-user-info" onclick="openFriendProfileModal()">
+                            <div class="avatar-circle" id="active-chat-avatar"><i class="fas fa-user"></i></div>
+                            <div>
+                                <h4 id="active-chat-name">اسم الصديق</h4>
+                                <span id="typing-status" class="typing-text"></span>
+                            </div>
                         </div>
                     </header>
+                    
                     <div class="messages-container" id="messages-box"></div>
+                    
+                    <!-- لوحة الإيموجي السريعة المدمجة -->
+                    <div class="emoji-drawer hidden" id="emoji-box">
+                        <span onclick="insertEmoji('😀')">😀</span><span onclick="insertEmoji('😂')">😂</span><span onclick="insertEmoji('😍')">😍</span><span onclick="insertEmoji('👍')">👍</span>
+                        <span onclick="insertEmoji('🌹')">🌹</span><span onclick="insertEmoji('🎉')">🎉</span><span onclick="insertEmoji('❤️')">❤️</span><span onclick="insertEmoji('هيع')">😂</span>
+                    </div>
+
                     <footer class="chat-footer">
-                        <input type="text" id="message-input" placeholder="اكتب رسالة واضغط Enter..." onkeypress="handleSendMessage(event)">
+                        <button onclick="toggleEmojiBox()" class="footer-icon-btn"><i class="far fa-smile"></i></button>
+                        <input type="text" id="message-input" placeholder="اكتب رسالة..." onkeypress="handleSendMessage(event)" oninput="emitTyping()">
                         <button onclick="sendMessage()" class="send-btn"><i class="fas fa-paper-plane"></i></button>
                     </footer>
                 </div>
             </main>
         </div>
     </div>
+
+    <!-- نافذة عرض بروفايل المستخدم وباقي البيانات -->
+    <div id="profile-modal" class="modal hidden" onclick="closeProfileModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="modal-profile-title">الملف الشخصي</h3>
+            <div class="avatar-circle large text-center" id="modal-profile-avatar"></div>
+            <h2 id="modal-profile-name"></h2>
+            <p id="modal-profile-bio"></p>
+            <button onclick="closeProfileModal()" class="form-box button" style="margin-top:15px;">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- نافذة رفع حالة جديدة -->
+    <div id="story-modal" class="modal hidden" onclick="closeStoryModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3>نشر حالة جديدة</h3>
+            <input type="text" id="story-text" placeholder="اكتب نص الحالة هنا...">
+            <button onclick="uploadStory()" class="form-box button" style="margin-top:10px;">نشر الحالة</button>
+        </div>
+    </div>
+
+    <!-- صوت تنبيه الإشعارات للرسائل الجديدة الخارقة -->
+    <audio id="notif-sound" src="https://mixkit.co" preload="auto"></audio>
 
     <script src="app.js" defer></script>
 </body>
