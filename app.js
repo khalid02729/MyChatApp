@@ -1,3 +1,4 @@
+
 const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
 let socket = null; 
 let currentUser = null;
@@ -11,27 +12,27 @@ document.addEventListener("DOMContentLoaded", () => {
         currentUser = JSON.parse(savedUser);
         showChatScreen();
     }
-    const loginForm = document.getElementById("login-form");
-    const registerForm = document.getElementById("register-form");
-    if (loginForm) loginForm.addEventListener("submit", handleLogin);
-    if (registerForm) registerForm.addEventListener("submit", handleRegister);
 });
 
 function previewAvatar(event) {
-    const file = event.target.files;
-    if (file && file[0]) {
+    const file = event.target.files[0];
+    if (file) {
         const reader = new FileReader();
         reader.onload = function() {
             globalAvatarBase64 = reader.result;
             document.getElementById("avatar-preview").innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
         }
-        reader.readAsDataURL(file[0]);
+        reader.readAsDataURL(file);
     }
 }
 
 function toggleAuthForms() {
-    document.getElementById("login-form").classList.toggle("hidden");
-    document.getElementById("register-form").classList.toggle("hidden");
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+    if (loginForm && registerForm) {
+        loginForm.classList.toggle("hidden");
+        registerForm.classList.toggle("hidden");
+    }
 }
 
 async function handleRegister(event) {
@@ -163,7 +164,6 @@ function renderChatsList(serverChats = []) {
         chatItem.innerHTML = `<div class="avatar-circle" id="chat-ava-${chat.username}"><i class="fas fa-user"></i></div><div class="chat-item-info"><h4>${chat.username}</h4><p>${chat.last_message}</p></div>`;
         container.appendChild(chatItem);
 
-        // جلب الصور بطريقة آمنة منفصلة بدون تجميد الكود
         fetch(`${SERVER_URL}/api/user-profile?username=${chat.username}`)
             .then(r => r.json())
             .then(d => {
@@ -232,4 +232,8 @@ async function sendMessage() {
     const input = document.getElementById("message-input");
     const messageText = input.value.trim();
     if (!messageText || !activeChatUser) return;
+    const messageData = { sender_username: currentUser.username, receiver_username: activeChatUser.username, message: messageText };
+    input.value = ""; 
+    try {
+        await fetch(`${SERVER_URL}/api/send`, {
 
