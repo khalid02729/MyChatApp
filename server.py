@@ -9,7 +9,6 @@ app = Flask(__name__, static_folder='.', static_url_path='')
 app.config['SECRET_KEY'] = 'whatsapp_super_secret_key'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-# تعديل حماية الـ CORS لأعلى صلاحيات مطلقة لمنع رسالة "خطأ بالاتصال" نهائياً
 CORS(app, supports_credentials=True, origins="*")
 socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60, max_http_buffer_size=50000000)
 
@@ -179,6 +178,7 @@ def on_join(data):
 def on_typing(data):
     emit('display_typing', data, room=data['receiver'])
 
+# تم تعديل الأسطر الأخيرة هنا لتقرأ الـ PORT الافتراضي لـ Railway (مثل 8082) تلقائياً ودون تضارب
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
