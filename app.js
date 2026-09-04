@@ -1,4 +1,4 @@
-const SERVER_URL = "https://railway.app"; 
+const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
 let socket = null; 
 let currentUser = null;
 let activeChatUser = null;
