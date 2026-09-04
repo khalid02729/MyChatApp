@@ -3,66 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Pro | Khalid Edition</title>
-    <link rel="stylesheet" href="https://cloudflare.com">
+    <title>واتساب كول</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cloudflare.com">
+    <script src="https://socket.io"></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- شاشة تسجيل الدخول -->
-        <div id="login-view" class="auth-box">
-            <div class="auth-logo"><i class="fa-brands fa-whatsapp"></i></div>
-            <h2>تسجيل الدخول</h2>
-            <div class="input-g"><input type="tel" id="l-phone" placeholder="رقم الموبايل"></div>
-            <div class="input-g"><input type="password" id="l-pass" placeholder="كلمة السر"></div>
-            <button id="b-login" class="btn">دخول</button>
-            <span id="to-r" class="link">إنشاء حساب تأميني جديد الحين</span>
-        </div>
 
-        <!-- شاشة إنشاء حساب جديد -->
-        <div id="register-view" class="auth-box hidden">
-            <div class="auth-logo"><i class="fa-brands fa-whatsapp" style="color: #53bdeb;"></i></div>
-            <h2>إنشاء حساب آمن</h2>
-            <div class="input-g"><input type="text" id="r-name" placeholder="الاسم الكامل"></div>
-            <div class="input-g"><input type="email" id="r-email" placeholder="البريد الإلكتروني"></div>
-            <div class="input-g"><input type="tel" id="r-phone" placeholder="رقم الموبايل"></div>
-            <div class="input-g"><input type="password" id="r-pass" placeholder="كلمة السر"></div>
-            <button id="b-reg" class="btn" style="background:#53bdeb;">إنشاء الحساب</button>
-            <span id="to-l" class="link">لديك حساب؟ سجل دخولك</span>
-        </div>
-
-        <!-- شاشة الواتساب الموحدة الرئيسية -->
-        <div id="main-view" class="hidden" style="flex-direction: column; height: 100%;">
-            <header class="wp-header">
-                <div id="header-profile-trigger" class="header-center">
-                    <div id="top-pfp" class="pfp">خ</div>
-                    <h1 id="h-title">WhatsApp</h1>
-                </div>
-                <div style="display:flex; gap:15px; align-items:center;">
-                    <i id="b-clear-all" class="fa-solid fa-trash-can" style="display:none; cursor:pointer; color:#8696a0;" title="مسح المحادثة بالكامل"></i>
-                    <i id="b-out" class="fa-solid fa-right-from-bracket" style="cursor:pointer; color:#8696a0; font-size:18px;"></i>
-                </div>
-            </header>
-            <div class="search-area"><input type="tel" id="f-phone" placeholder="ابحث برقم موبايل صاحبك..."><button id="b-find">بحث</button></div>
-            <div class="status-bar">
-                <button id="add-status" class="add-status-btn"><i class="fa-solid fa-plus"></i></button>
-                <div id="status-list" style="display:flex; gap:10px;"></div>
+    <!-- شاشة تسجيل الدخول -->
+    <div id="auth-screen" class="screen">
+        <div class="auth-container">
+            <div class="auth-header">
+                <i class="fab fa-whatsapp" style="color: #00a884; font-size: 50px; margin-bottom: 10px;"></i>
+                <h2>مرحباً بك في واتساب</h2>
             </div>
-            <div id="v-box" class="chat-view"><div class="empty">ابحث عن رقم صديق مسجل لفتح محادثة الواتساب الموحدة أونلاين الحين!</div></div>
-            <div class="wp-footer"><input type="text" id="m-input" class="wp-input" placeholder="اكتب رسالة شيك..." disabled><button id="b-send" class="wp-send" disabled><i class="fa-solid fa-paper-plane"></i></button></div>
-        </div>
+            
+            <form id="login-form" class="form-box" onsubmit="handleLogin(event)">
+                <h3>تسجيل الدخول</h3>
+                <input type="text" id="login-username" placeholder="اسم المستخدم" required>
+                <input type="password" id="login-pass" placeholder="كلمة المرور" required>
+                <button type="submit">دخول</button>
+                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()">إنشاء حساب جديد</span></p>
+            </form>
 
-        <!-- كارت الملف التعريفي المنبثق -->
-        <div id="profile-modal" class="modal hidden">
-            <div class="modal-card">
-                <div id="modal-pfp-img" class="modal-pfp">خ</div>
-                <h3 id="modal-name">---</h3>
-                <p id="modal-phone">الرقم: ---</p>
-                <p id="modal-email">البريد: ---</p>
-                <button id="close-modal" class="close-btn">إغلاق</button>
-            </div>
+            <form id="register-form" class="form-box hidden" onsubmit="handleRegister(event)">
+                <h3>إنشاء حساب جديد</h3>
+                <input type="text" id="reg-username" placeholder="اسم المستخدم الفريد" required>
+                <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
+                <button type="submit">تسجيل الحساب</button>
+                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()">تسجيل الدخول</span></p>
+            </form>
         </div>
     </div>
-    <script src="app.js"></script>
+
+    <!-- واجهة الشات الرئيسية -->
+    <div id="chat-screen" class="screen hidden">
+        <div class="chat-app-container">
+            
+            <aside class="sidebar">
+                <header class="sidebar-header">
+                    <div class="user-profile">
+                        <div class="avatar-circle"><i class="fas fa-user"></i></div>
+                        <span id="current-user-name" style="font-weight: bold;">المستخدم</span>
+                    </div>
+                    <button onclick="logout()" class="logout-btn">خروج</button>
+                </header>
+
+                <!-- شريط البحث -->
+                <div class="search-bar-container">
+                    <div class="search-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="search-username" placeholder="ابحث عن شخص بالاسم واضغط Enter..." onkeypress="handleSearch(event)">
+                    </div>
+                </div>
+
+                <div class="chats-list" id="chats-list-container"></div>
+            </aside>
+
+            <main class="chat-area">
+                <div id="welcome-chat-view" class="welcome-view">
+                    <i class="fab fa-whatsapp" style="font-size: 70px; color: #ced5d8; margin-bottom: 15px;"></i>
+                    <h2>واتساب للويب</h2>
+                    <p>أرسل واستقبل الرسائل فورياً دون الحاجة لإبقاء هاتفك متصلاً.</p>
+                </div>
+
+                <div id="active-chat-view" class="active-view hidden">
+                    <header class="chat-header">
+                        <div class="active-user-info">
+                            <div class="avatar-circle"><i class="fas fa-user"></i></div>
+                            <h4 id="active-chat-name">اسم الصديق</h4>
+                        </div>
+                    </header>
+                    <div class="messages-container" id="messages-box"></div>
+                    <footer class="chat-footer">
+                        <input type="text" id="message-input" placeholder="اكتب رسالة واضغط Enter..." onkeypress="handleSendMessage(event)">
+                        <button onclick="sendMessage()" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+                    </footer>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js" defer></script>
 </body>
 </html>
