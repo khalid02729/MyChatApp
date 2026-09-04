@@ -1,5 +1,6 @@
 const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
 let socket = null, currentUser = null, activeChatUser = null, activeChats = {}, globalAvatarBase64 = "";
+let storyMediaBase64 = "", storyMediaType = "text";
 
 window.onload = function() {
     try {
@@ -9,7 +10,7 @@ window.onload = function() {
 };
 
 function previewAvatar(event) {
-    const file = event.target.files[0];
+    const file = event.target.files;
     if (file) {
         const reader = new FileReader();
         reader.onload = function() {
@@ -221,7 +222,3 @@ async function sendMessage() {
 
 function handleSendMessage(event) { if (event.key === "Enter") sendMessage(); }
 function toggleEmojiBox() { document.getElementById("emoji-box").classList.toggle("hidden"); }
-function insertEmoji(emoji) { const inp = document.getElementById("message-input"); if(inp) inp.value += emoji; toggleEmojiBox(); }
-
-function openMyProfileModal() { openProfileData(currentUser.username); }
-
