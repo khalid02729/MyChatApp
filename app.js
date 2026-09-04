@@ -1,4 +1,5 @@
-const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
+const SERVER_URL = "const SERVER_URL = window.location.origin;
+    "; 
 let socket = null, currentUser = null, activeChatUser = null, activeChats = {}, globalAvatarBase64 = "";
 let storyMediaBase64 = "", storyMediaType = "text";
 
