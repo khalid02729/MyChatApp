@@ -1,23 +1,19 @@
 const SERVER_URL = window.location.protocol + "//" + window.location.host;
-let socket = null, currentUser = null, activeChatUser = null, activeChats = {}, globalAvatarBase64 = "";
-let storyMediaBase64 = "", storyMediaType = "text";
+let socket = null, currentUser = null, activeChatUser = null, activeChats = {}, globalAvatarBase64 = "", storyMediaBase64 = "", storyMediaType = "text";
 
 window.onload = function() {
     try {
-        const savedUser = localStorage.getItem("chat_user");
-        if (savedUser) { currentUser = JSON.parse(savedUser); showChatScreen(); }
+        const u = localStorage.getItem("chat_user");
+        if (u) { currentUser = JSON.parse(u); showChatScreen(); }
     } catch (e) {}
 };
 
-function previewAvatar(event) {
-    const file = event.target.files;
-    if (file && file[0]) {
-        const reader = new FileReader();
-        reader.onload = function() {
-            globalAvatarBase64 = reader.result;
-            document.getElementById("avatar-preview").innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-        };
-        reader.readAsDataURL(file[0]);
+function previewAvatar(e) {
+    const f = e.target.files[0];
+    if (f) {
+        const r = new FileReader();
+        r.onload = () => { globalAvatarBase64 = r.result; document.getElementById("avatar-preview").innerHTML = `<img src="${r.result}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`; };
+        r.readAsDataURL(f);
     }
 }
 
@@ -26,63 +22,34 @@ function toggleAuthForms() {
     document.getElementById("register-form-box").classList.toggle("hidden");
 }
 
-async function handleRegister(event) {
-    if (event) event.preventDefault();
-    const u = document.getElementById("reg-username").value.trim();
-    const p = document.getElementById("reg-pass").value.trim();
+async function handleRegister(e) {
+    if (e) e.preventDefault();
+    const u = document.getElementById("reg-username").value.trim(), p = document.getElementById("reg-pass").value.trim();
     if (!u || !p) return alert("برجاء ملء الحقول");
     try {
-        const r = await fetch(`${SERVER_URL}/api/register`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: u, password: p, avatar: globalAvatarBase64 })
-        });
-        const d = await r.json();
-        if (r.ok) {
-            alert(d.message);
-            if (d.status === "success") toggleAuthForms();
-        } else {
-            alert("🚨 السيرفر رفض التسجيل وقال:\n" + d.message);
-        }
-    } catch (err) { 
-        alert("🚨 مصيدة الشبكة: السيرفر لم يستقبل الطلب أصلاً!\nتفاصيل الخطأ: " + err.message); 
-    }
+        const r = await fetch(`${SERVER_URL}/api/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p, avatar: globalAvatarBase64 }) });
+        const d = await r.json(); alert(d.message); if (d.status === "success") toggleAuthForms();
+    } catch (err) { alert("خطأ في الاتصال"); }
 }
 
-async function handleLogin(event) {
-    if (event) event.preventDefault();
-    const u = document.getElementById("login-username").value.trim();
-    const p = document.getElementById("login-pass").value.trim();
+async function handleLogin(e) {
+    if (e) e.preventDefault();
+    const u = document.getElementById("login-username").value.trim(), p = document.getElementById("login-pass").value.trim();
     if (!u || !p) return alert("برجاء ملء الحقول");
     try {
-        const r = await fetch(`${SERVER_URL}/api/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: u, password: p })
-        });
+        const r = await fetch(`${SERVER_URL}/api/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: u, password: p }) });
         const d = await r.json();
-        if (r.ok && d.status === "success") {
-            currentUser = d.user;
-            localStorage.setItem("chat_user", JSON.stringify(currentUser));
-            showChatScreen();
-        } else {
-            alert("🚨 السيرفر رفض الدخول وقال:\n" + d.message);
-        }
-    } catch (err) { 
-        alert("🚨 مصيدة الشبكة: خطأ بالاتصال بالسيرفر أثناء الدخول!\nتفاصيل الخطأ: " + err.message); 
-    }
+        if (r.ok && d.status === "success") { currentUser = d.user; localStorage.setItem("chat_user", JSON.stringify(d.user)); showChatScreen(); }
+        else { alert(d.message); }
+    } catch (err) { alert("خطأ بالاتصال بالسيرفر"); }
 }
 
 function showChatScreen() {
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("chat-screen").classList.remove("hidden");
     document.getElementById("current-user-name").innerText = currentUser.username;
-    if (currentUser.avatar) {
-        document.getElementById("my-avatar-view").innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-    }
-    initSocketConnection();
-    loadActiveChatsFromServer();
-    loadStories();
+    if (currentUser.avatar) document.getElementById("my-avatar-view").innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    initSocketConnection(); loadActiveChatsFromServer(); loadStories();
     setInterval(() => { if (currentUser) { loadActiveChatsFromServer(); loadStories(); } }, 5000);
 }
 
@@ -91,18 +58,13 @@ function initSocketConnection() {
     try {
         socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
         socket.on("connect", () => { socket.emit("join", { username: currentUser.username }); });
-        socket.on("receive_message", (data) => {
-            const s = document.getElementById("notif-sound");
-            if(s) s.play().catch(()=>{});
-            if (activeChatUser && (data.sender_username === activeChatUser.username || data.receiver_username === activeChatUser.username)) { fetchActiveChatMessages(); }
+        socket.on("receive_message", (d) => {
+            const s = document.getElementById("notif-sound"); if(s) s.play().catch(()=>{});
+            if (activeChatUser && (d.sender_username === activeChatUser.username || d.receiver_username === activeChatUser.username)) fetchActiveChatMessages();
             loadActiveChatsFromServer();
         });
         socket.on("message_deleted", () => { if (activeChatUser) fetchActiveChatMessages(); });
-        socket.on("display_typing", (data) => {
-            if (activeChatUser && data.sender === activeChatUser.username) {
-                document.getElementById("typing-status").innerText = data.typing ? "يكتب الآن..." : "";
-            }
-        });
+        socket.on("display_typing", (d) => { if (activeChatUser && d.sender === activeChatUser.username) document.getElementById("typing-status").innerText = d.typing ? "يكتب الآن..." : ""; });
     } catch (e) {}
 }
 
@@ -113,15 +75,15 @@ function emitTyping() {
     window.typingTimeout = setTimeout(() => { socket.emit("typing", { sender: currentUser.username, receiver: activeChatUser.username, typing: false }); }, 2000);
 }
 
-function openChat(username, avatarImg = "") {
-    activeChatUser = { username: username };
+function openChat(u, a = "") {
+    activeChatUser = { username: u };
     document.getElementById("app-sidebar").classList.add("hidden-mobile");
     document.getElementById("app-chat-area").classList.remove("hidden-mobile");
     document.getElementById("welcome-chat-view").classList.add("hidden");
     document.getElementById("active-chat-view").classList.remove("hidden");
-    document.getElementById("active-chat-name").innerText = activeChatUser.username;
-    const box = document.getElementById("active-chat-avatar");
-    if(box) { box.innerHTML = avatarImg ? `<img src="${avatarImg}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<i class="fas fa-user"></i>`; }
+    document.getElementById("active-chat-name").innerText = u;
+    const b = document.getElementById("active-chat-avatar");
+    if(b) b.innerHTML = a ? `<img src="${a}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<i class="fas fa-user"></i>`;
     fetchActiveChatMessages();
 }
 
@@ -133,44 +95,28 @@ function backToSidebar() {
 
 async function loadActiveChatsFromServer() {
     try {
-        const r = await fetch(`${SERVER_URL}/api/active-chats?username=${currentUser.username}`);
-        const c = await r.json();
-        renderChatsList(c);
+        const r = await fetch(`${SERVER_URL}/api/active-chats?username=${currentUser.username}`), c = await r.json();
+        const container = document.getElementById("chats-list-container"); if(!container) return; container.innerHTML = "";
+        if (c.length === 0) { container.innerHTML = `<div class="no-chats">لا توجد محادثات. ابحث عن صديق لبدء دردشة!</div>`; return; }
+        c.forEach(chat => {
+            const isActive = activeChatUser && activeChatUser.username === chat.username ? "active" : "";
+            const item = document.createElement("div"); item.className = `chat-item ${isActive}`;
+            item.onclick = () => { const img = item.querySelector('.avatar-circle img'); openChat(chat.username, img ? img.src : ""); };
+            item.innerHTML = `<div class="avatar-circle" id="chat-ava-${chat.username}"><i class="fas fa-user"></i></div><div class="chat-item-info"><h4>${chat.username}</h4><p>${chat.last_message}</p></div>`;
+            container.appendChild(item);
+            fetch(`${SERVER_URL}/api/user-profile?username=${chat.username}`).then(res => r.json()).then(d => {
+                if(d.status === "success" && d.user.avatar) { const b = document.getElementById(`chat-ava-${chat.username}`); if(b) b.innerHTML = `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`; }
+            }).catch(()=>{});
+        });
     } catch (err) {}
 }
 
-function renderChatsList(serverChats = []) {
-    const container = document.getElementById("chats-list-container");
-    if(!container) return;
-    container.innerHTML = "";
-    if (serverChats.length === 0) {
-        container.innerHTML = `<div class="no-chats">لا توجد محادثات. ابحث عن صديق لبدء دردشة!</div>`;
-        return;
-    }
-    serverChats.forEach(chat => {
-        const isActive = activeChatUser && activeChatUser.username === chat.username ? "active" : "";
-        const item = document.createElement("div");
-        item.className = `chat-item ${isActive}`;
-        item.onclick = () => { const img = item.querySelector('.avatar-circle img'); openChat(chat.username, img ? img.src : ""); };
-        item.innerHTML = `<div class="avatar-circle" id="chat-ava-${chat.username}"><i class="fas fa-user"></i></div><div class="chat-item-info"><h4>${chat.username}</h4><p>${chat.last_message}</p></div>`;
-        container.appendChild(item);
-
-        fetch(`${SERVER_URL}/api/user-profile?username=${chat.username}`).then(r => r.json()).then(d => {
-            if(d.status === "success" && d.user.avatar) {
-                const b = document.getElementById(`chat-ava-${chat.username}`);
-                if(b) b.innerHTML = `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-            }
-        }).catch(()=>{});
-    });
-}
-
-async function handleSearch(event) {
-    if (event.key !== "Enter") return;
+async function handleSearch(e) {
+    if (e.key !== "Enter") return;
     const u = document.getElementById("search-username").value.trim();
     if (!u || u === currentUser.username) return;
     try {
-        const r = await fetch(`${SERVER_URL}/api/search?username=${u}`);
-        const d = await r.json();
+        const r = await fetch(`${SERVER_URL}/api/search?username=${u}`), d = await r.json();
         if (d.status === "success") { document.getElementById("search-username").value = ""; openChat(d.user.username, d.user.avatar); }
         else { alert(d.message); }
     } catch (err) { alert("خطأ أثناء البحث"); }
@@ -179,50 +125,42 @@ async function handleSearch(event) {
 async function fetchActiveChatMessages() {
     if (!activeChatUser) return;
     try {
-        const r = await fetch(`${SERVER_URL}/api/messages?sender=${currentUser.username}&receiver=${activeChatUser.username}`);
-        const m = await r.json();
-        renderMessages(m);
+        const r = await fetch(`${SERVER_URL}/api/messages?sender=${currentUser.username}&receiver=${activeChatUser.username}`), m = await r.json();
+        const box = document.getElementById("messages-box"); if(!box) return; box.innerHTML = "";
+        m.forEach(msg => {
+            const isMe = msg.sender_username === currentUser.username;
+            const bubble = document.createElement("div"); bubble.className = `msg-bubble ${isMe ? 'sent' : 'received'}`; bubble.innerText = msg.message;
+            if (!msg.deleted_for_all && isMe) { bubble.style.cursor = "pointer"; bubble.onclick = () => { if(confirm("هل تريد حذف هذه الرسالة لدى الجميع؟")) triggerDeleteMessage(msg.id); }; }
+            box.appendChild(bubble);
+        });
+        box.scrollTop = box.scrollHeight;
     } catch (err) {}
 }
 
-function renderMessages(messages = []) {
-    const box = document.getElementById("messages-box");
-    if(!box) return;
-    box.innerHTML = "";
-    messages.forEach(msg => {
-        const isMe = msg.sender_username === currentUser.username;
-        const bubble = document.createElement("div");
-        bubble.className = `msg-bubble ${isMe ? 'sent' : 'received'}`;
-        bubble.innerText = msg.message;
-        if (!msg.deleted_for_all && isMe) {
-            bubble.style.cursor = "pointer";
-            bubble.onclick = () => { if(confirm("هل تريد حذف هذه الرسالة لدى الجميع؟")) { triggerDeleteMessage(msg.id); } };
-        }
-        box.appendChild(bubble);
-    });
-    box.scrollTop = box.scrollHeight;
-}
-
-async function triggerDeleteMessage(msgId) {
-    try {
-        await fetch(`${SERVER_URL}/api/delete-message`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: msgId, sender_username: currentUser.username, receiver_username: activeChatUser.username })
-        });
-        fetchActiveChatMessages();
-    } catch(e){}
+async function triggerDeleteMessage(id) {
+    try { await fetch(`${SERVER_URL}/api/delete-message`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: id, sender_username: currentUser.username, receiver_username: activeChatUser.username }) }); fetchActiveChatMessages(); } catch(e){}
 }
 
 async function sendMessage() {
-    const input = document.getElementById("message-input");
-    if(!input) return;
-    const txt = input.value.trim();
-    if (!txt || !activeChatUser) return;
-    input.value = ""; 
+    const input = document.getElementById("message-input"); if(!input) return;
+    const txt = input.value.trim(); if (!txt || !activeChatUser) return; input.value = ""; 
+    try { await fetch(`${SERVER_URL}/api/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sender_username: currentUser.username, receiver_username: activeChatUser.username, message: txt }) }); fetchActiveChatMessages(); } catch(e){}
+}
+
+function handleSendMessage(e) { if (e.key === "Enter") sendMessage(); }
+function toggleEmojiBox() { document.getElementById("emoji-box").classList.toggle("hidden"); }
+function insertEmoji(em) { const inp = document.getElementById("message-input"); if(inp) inp.value += em; toggleEmojiBox(); }
+function openMyProfile() { openProfileData(currentUser.username); }
+function openFriendProfile() { if(activeChatUser) openProfileData(activeChatUser.username); }
+
+async function openProfileData(u) {
     try {
-        await fetch(`${SERVER_URL}/api/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sender_username: currentUser.username, receiver_username: activeChatUser.username, message: txt })
-        });
+        const r = await fetch(`${SERVER_URL}/api/user-profile?username=${u}`), d = await r.json();
+        if(d.status === "success") {
+            document.getElementById("modal-profile-name").innerText = d.user.username; document.getElementById("modal-profile-bio").innerText = d.user.bio;
+            const avaBox = document.getElementById("modal-profile-avatar"); if(avaBox) avaBox.innerHTML = d.user.avatar ? `<img src="${d.user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<i class="fas fa-user" style="font-size:40px;"></i>`;
+            document.getElementById("profile-modal").classList.remove("hidden");
+        }
+    } catch(e){}
+}
+
