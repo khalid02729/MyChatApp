@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cloudflare.com">
     <script src="https://socket.io"></script>
     
-    <!-- مصيدة الأخطاء في الأعلى لمراقبة الصفحة بأمان -->
     <script>
         window.onerror = function(msg, url, line) {
             alert("🚨 قفشنا الغلط البرمجي:\n" + msg + "\nفي السطر: " + line);
@@ -18,7 +17,6 @@
 </head>
 <body>
 
-    <!-- شاشة تسجيل الدخول -->
     <div id="auth-screen" class="screen">
         <div class="auth-container">
             <div class="auth-header">
@@ -51,11 +49,11 @@
         </div>
     </div>
 
-    <!-- واجهة الشات الرئيسية المتجاوبة -->
     <div id="chat-screen" class="screen hidden">
         <div class="chat-app-container">
             <aside class="sidebar" id="app-sidebar">
                 <header class="sidebar-header">
+                    <!-- تم تعديل استدعاء الدالة هنا لـ openMyProfileModal() لتطابق الـ JS تماماً -->
                     <div class="user-profile" onclick="openMyProfileModal()">
                         <div class="avatar-circle" id="my-avatar-view"><i class="fas fa-user"></i></div>
                         <span id="current-user-name" style="font-weight:bold;">المستخدم</span>
@@ -91,6 +89,7 @@
                 <div id="active-chat-view" class="active-view hidden">
                     <header class="chat-header">
                         <button onclick="backToSidebar()" class="back-btn"><i class="fas fa-arrow-right"></i></button>
+                        <!-- تم تعديل استدعاء بروفايل الصديق هنا أيضاً ليتطابق -->
                         <div class="active-user-info" onclick="openFriendProfileModal()">
                             <div class="avatar-circle" id="active-chat-avatar"><i class="fas fa-user"></i></div>
                             <div>
@@ -117,7 +116,6 @@
         </div>
     </div>
 
-    <!-- النوافذ العائمة -->
     <div id="profile-modal" class="modal-backdrop hidden" onclick="closeProfileModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3>الملف الشخصي</h3>
@@ -156,7 +154,6 @@
 
     <audio id="notif-sound" src="https://mixkit.co" preload="auto"></audio>
 
-    <!-- تم نقل استدعاء ملف الجافا سكريبت هنا في الأسفل لضمان التعرف على العناصر بنجاح تام -->
     <script src="app.js"></script>
 </body>
 </html>
