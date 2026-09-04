@@ -1,4 +1,3 @@
-
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room
@@ -8,8 +7,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.config['SECRET_KEY'] = 'whatsapp_super_secret_key'
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+
 CORS(app, resources={r"/api/*": {"origins": "*"}})
-socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60)
+socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60, max_http_buffer_size=50000000)
 
 DATABASE = 'chat_app.db'
 
@@ -44,6 +45,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL,
                 content TEXT NOT NULL,
+                story_type TEXT DEFAULT 'text',
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -79,7 +81,6 @@ def login():
     password = data.get('password', '').strip()
     try:
         with get_db() as conn:
-            # تم إصلاح الخطأ الإملائي هنا وإزالة كلمة VALUES الزائدة
             user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         if user and check_password_hash(user['password'], password):
             return jsonify({'status': 'success', 'user': {'username': user['username'], 'avatar': user['avatar'], 'bio': user['bio']}})
@@ -154,8 +155,9 @@ def handle_stories():
         data = request.json
         username = data.get('username')
         content = data.get('content')
+        story_type = data.get('story_type', 'text')
         with get_db() as conn:
-            conn.execute('INSERT INTO stories (username, content) VALUES (?, ?)', (username, content))
+            conn.execute('INSERT INTO stories (username, content, story_type) VALUES (?, ?, ?)', (username, content, story_type))
             conn.commit()
         return jsonify({'status': 'success'})
     else:
@@ -179,4 +181,5 @@ def on_typing(data):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+
 
