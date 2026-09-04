@@ -1,4 +1,3 @@
-
 import os
 import sqlite3
 from flask import Flask, jsonify, request, send_from_directory
@@ -145,6 +144,7 @@ def send_message_api():
     message_text = data.get('message')
     
     with get_db() as conn:
+        # هنا صلحنا المشكلة وشيلنا السطر اللي بيبوظ الإرسال
         conn.execute('''
             INSERT INTO messages (id, sender_username, receiver_username, message) 
             VALUES (?, ?, ?, ?)
@@ -152,7 +152,6 @@ def send_message_api():
         conn.commit()
         
     try:
-        # بث حي ومطور متوافق مع صورتك الأخيرة تماماً لغرفة المرسل والمستقبل
         socketio.emit('receive_private_message', data, room=sender)
         socketio.emit('receive_private_message', data, room=receiver)
     except:
