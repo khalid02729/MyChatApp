@@ -11,13 +11,13 @@ window.onload = function() {
 
 function previewAvatar(event) {
     const file = event.target.files;
-    if (file && file[0]) {
+    if (file && file) {
         const reader = new FileReader();
         reader.onload = function() {
             globalAvatarBase64 = reader.result;
             document.getElementById("avatar-preview").innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
         };
-        reader.readAsDataURL(file[0]);
+        reader.readAsDataURL(file);
     }
 }
 
@@ -26,6 +26,7 @@ function toggleAuthForms() {
     document.getElementById("register-form-box").classList.toggle("hidden");
 }
 
+// ================= مصيدة أخطاء السيرفر المطورة =================
 async function handleRegister(event) {
     if (event) event.preventDefault();
     const u = document.getElementById("reg-username").value.trim();
@@ -37,10 +38,20 @@ async function handleRegister(event) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username: u, password: p, avatar: globalAvatarBase64 })
         });
+        
+        // قراءة رد السيرفر الحقيقي لمعرفة المشكلة
         const d = await r.json();
-        alert(d.message);
-        if (d.status === "success") toggleAuthForms();
-    } catch (err) { alert("خطأ في الاتصال"); }
+        if (r.ok) {
+            alert(d.message);
+            if (d.status === "success") toggleAuthForms();
+        } else {
+            // مصيدة: إذا رد السيرفر بخطأ (مثل 400 أو 500) تكشفه هنا فورا
+            alert("🚨 السيرفر رفض التسجيل وقال:\n" + d.message);
+        }
+    } catch (err) { 
+        // مصيدة: إذا كان هناك انقطاع كامل في الشبكة أو الرابط غلط
+        alert("🚨 مصيدة الشبكة: السيرفر لم يستقبل الطلب أصلاً!\nتفاصيل الخطأ: " + err.message); 
+    }
 }
 
 async function handleLogin(event) {
@@ -54,13 +65,18 @@ async function handleLogin(event) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username: u, password: p })
         });
+        
         const d = await r.json();
-        if (d.status === "success") {
+        if (r.ok && d.status === "success") {
             currentUser = d.user;
             localStorage.setItem("chat_user", JSON.stringify(currentUser));
             showChatScreen();
-        } else { alert(d.message); }
-    } catch (err) { alert("خطأ بالاتصال بالسيرفر"); }
+        } else {
+            alert("🚨 السيرفر رفض الدخول وقال:\n" + d.message);
+        }
+    } catch (err) { 
+        alert("🚨 مصيدة الشبكة: خطأ بالاتصال بالسيرفر أثناء الدخول!\nتفاصيل الخطأ: " + err.message); 
+    }
 }
 
 function showChatScreen() {
@@ -211,14 +227,4 @@ async function sendMessage() {
     if (!txt || !activeChatUser) return;
     input.value = ""; 
     try {
-        await fetch(`${SERVER_URL}/api/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sender_username: currentUser.username, receiver_username: activeChatUser.username, message: txt })
-        });
-        fetchActiveChatMessages();
-    } catch(e){}
-}
 
-function handleSendMessage(event) { if (event.key === "Enter") sendMessage(); }
-function toggleEmojiBox() { document.getElementById("emoji-box").classList.toggle("hidden"); }
