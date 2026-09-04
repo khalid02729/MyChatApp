@@ -1,11 +1,12 @@
-const SERVER_URL = "https://mychatapp-production-b225.up.railway.app"; 
+const SERVER_URL = "https://railway.app"; 
 let socket = null; 
 let currentUser = null;
 let activeChatUser = null;
 let activeChats = {}; 
 let globalAvatarBase64 = "";
 
-document.addEventListener("DOMContentLoaded", () => {
+// تم تأمين دالة البداية بالكامل لعدم تجميد الصفحة
+function initAppSafe() {
     try {
         const savedUser = localStorage.getItem("chat_user");
         if (savedUser) {
@@ -13,9 +14,12 @@ document.addEventListener("DOMContentLoaded", () => {
             showChatScreen();
         }
     } catch (e) {
-        console.log("Local storage error safe catch");
+        console.log("Local storage entry error caught successfully");
     }
-});
+}
+
+// تشغيل آمن ومباشر
+window.onload = initAppSafe;
 
 function previewAvatar(event) {
     const file = event.target.files[0];
@@ -23,7 +27,8 @@ function previewAvatar(event) {
         const reader = new FileReader();
         reader.onload = function() {
             globalAvatarBase64 = reader.result;
-            document.getElementById("avatar-preview").innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            const previewBox = document.getElementById("avatar-preview");
+            if(previewBox) previewBox.innerHTML = `<img src="${globalAvatarBase64}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
         }
         reader.readAsDataURL(file);
     }
@@ -79,8 +84,10 @@ function showChatScreen() {
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("chat-screen").classList.remove("hidden");
     document.getElementById("current-user-name").innerText = currentUser.username;
-    if (currentUser.avatar) {
-        document.getElementById("my-avatar-view").innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    
+    const myAvaBox = document.getElementById("my-avatar-view");
+    if (currentUser.avatar && myAvaBox) {
+        myAvaBox.innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
     }
     initSocketConnection();
     loadActiveChatsFromServer();
@@ -109,9 +116,7 @@ function initSocketConnection() {
                 document.getElementById("typing-status").innerText = data.typing ? "يكتب الآن..." : "";
             }
         });
-    } catch (e) {
-        console.log("Socket safe bypass");
-    }
+    } catch (e) { console.log("Socket connection safe bypass"); }
 }
 
 function emitTyping() {
@@ -132,8 +137,10 @@ function openChat(username, avatarImg = "") {
     document.getElementById("active-chat-name").innerText = activeChatUser.username;
     
     const chatAvatarBox = document.getElementById("active-chat-avatar");
-    if(avatarImg) chatAvatarBox.innerHTML = `<img src="${avatarImg}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-    else chatAvatarBox.innerHTML = `<i class="fas fa-user"></i>`;
+    if(chatAvatarBox) {
+        if(avatarImg) chatAvatarBox.innerHTML = `<img src="${avatarImg}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+        else chatAvatarBox.innerHTML = `<i class="fas fa-user"></i>`;
+    }
     fetchActiveChatMessages();
 }
 
@@ -153,6 +160,7 @@ async function loadActiveChatsFromServer() {
 
 function renderChatsList(serverChats = []) {
     const container = document.getElementById("chats-list-container");
+    if(!container) return;
     container.innerHTML = "";
     if (serverChats.length === 0) {
         container.innerHTML = `<div class="no-chats">لا توجد محادثات. ابحث عن صديق لبدء دردشة!</div>`;
@@ -207,6 +215,7 @@ async function fetchActiveChatMessages() {
 
 function renderMessages(messages = []) {
     const box = document.getElementById("messages-box");
+    if(!box) return;
     box.innerHTML = "";
     messages.forEach(msg => {
         const isMe = msg.sender_username === currentUser.username;
@@ -229,11 +238,4 @@ async function triggerDeleteMessage(msgId) {
         await fetch(`${SERVER_URL}/api/delete-message`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: msgId, sender_username: currentUser.username, receiver_username: activeChatUser.username })
-        });
-        fetchActiveChatMessages();
-    } catch(e){}
-}
 
-async function sendMessage() {
-    const input = document.getElementById("message-input");
