@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -13,6 +14,12 @@
             alert("🚨 قفشنا الغلط البرمجي:\n" + msg + "\nفي السطر: " + line);
             return false;
         };
+
+        // دالة تسجيل الخروج المستقلة المدمجة هنا لضمان خروجك الفوري
+        function forceLogout() {
+            localStorage.removeItem("chat_user");
+            window.location.reload();
+        }
     </script>
 </head>
 <body>
@@ -53,14 +60,15 @@
         <div class="chat-app-container">
             <aside class="sidebar" id="app-sidebar">
                 <header class="sidebar-header">
-                    <!-- تم تعديل استدعاء الدالة هنا لـ openMyProfileModal() لتطابق الـ JS تماماً -->
-                    <div class="user-profile" onclick="openMyProfileModal()">
+                    <!-- غيرنا الدالة هنا لـ openProfileData لضمان مطابقتها لأي نسخة JS معلقة -->
+                    <div class="user-profile" onclick="openProfileData(currentUser.username)">
                         <div class="avatar-circle" id="my-avatar-view"><i class="fas fa-user"></i></div>
                         <span id="current-user-name" style="font-weight:bold;">المستخدم</span>
                     </div>
                     <div class="header-actions">
                         <button onclick="openStoryModal()" class="header-icon-btn" title="حالة جديدة"><i class="fas fa-circle-notch"></i></button>
-                        <button onclick="logout()" class="logout-btn" title="تسجيل الخروج"><i class="fas fa-sign-out-alt"></i></button>
+                        <!-- تم ربط الزر هنا بالدالة المستقلة الفورية forceLogout -->
+                        <button onclick="forceLogout()" class="logout-btn" title="تسجيل الخروج"><i class="fas fa-sign-out-alt"></i></button>
                     </div>
                 </header>
 
@@ -89,8 +97,7 @@
                 <div id="active-chat-view" class="active-view hidden">
                     <header class="chat-header">
                         <button onclick="backToSidebar()" class="back-btn"><i class="fas fa-arrow-right"></i></button>
-                        <!-- تم تعديل استدعاء بروفايل الصديق هنا أيضاً ليتطابق -->
-                        <div class="active-user-info" onclick="openFriendProfileModal()">
+                        <div class="active-user-info" onclick="openProfileData(activeChatUser.username)">
                             <div class="avatar-circle" id="active-chat-avatar"><i class="fas fa-user"></i></div>
                             <div>
                                 <h4 id="active-chat-name">اسم الصديق</h4>
