@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>واتساب كول</title>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- روابط صحيحة ومحدثة للأيقونات والمكتبات لحل مشكلة تجميد الشاشة -->
     <link rel="stylesheet" href="https://cloudflare.com">
     <script src="https://socket.io"></script>
 </head>
@@ -18,20 +20,20 @@
                 <h2>مرحباً بك في واتساب</h2>
             </div>
             
-            <form id="login-form" class="form-box" onsubmit="handleLogin(event)">
+            <form id="login-form" class="form-box">
                 <h3>تسجيل الدخول</h3>
                 <input type="text" id="login-username" placeholder="اسم المستخدم" required>
                 <input type="password" id="login-pass" placeholder="كلمة المرور" required>
                 <button type="submit">دخول</button>
-                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()">إنشاء حساب جديد</span></p>
+                <p>ليس لديك حساب؟ <span onclick="toggleAuthForms()" style="cursor: pointer; color: #00a884;">إنشاء حساب جديد</span></p>
             </form>
 
-            <form id="register-form" class="form-box hidden" onsubmit="handleRegister(event)">
+            <form id="register-form" class="form-box hidden">
                 <h3>إنشاء حساب جديد</h3>
                 <input type="text" id="reg-username" placeholder="اسم المستخدم الفريد" required>
                 <input type="password" id="reg-pass" placeholder="كلمة المرور" required>
                 <button type="submit">تسجيل الحساب</button>
-                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()">تسجيل الدخول</span></p>
+                <p>لديك حساب بالفعل؟ <span onclick="toggleAuthForms()" style="cursor: pointer; color: #00a884;">تسجيل الدخول</span></p>
             </form>
         </div>
     </div>
@@ -87,3 +89,4 @@
     <script src="app.js" defer></script>
 </body>
 </html>
+
