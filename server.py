@@ -1,105 +1,555 @@
 import os
+import sqlite3
+import requests
+
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import sqlite3
 
-app = Flask(__name__, static_folder='.', static_url_path='')
-app.config['SECRET_KEY'] = 'quran_text_2027_key'
-CORS(app, supports_credentials=True, origins="*")
 
-DATABASE = 'quran_text.db'
+app = Flask(__name__, static_folder=".", static_url_path="")
+CORS(app)
+
+DATABASE = "quran_text.db"
+
+QURAN_API = "https://api.alquran.cloud/v1"
+QURAN_EDITION = "quran-uthmani"
+
+
+# =========================================================
+# قاعدة البيانات
+# =========================================================
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
+
+def create_tables():
+
     with get_db() as conn:
-        conn.execute('DROP TABLE IF EXISTS azkar')
-        conn.execute('DROP TABLE IF EXISTS verses')
-        conn.execute('DROP TABLE IF EXISTS surahs')
-        
-        # 1. جدول السور الرئيسي
-        conn.execute('CREATE TABLE surahs (id INTEGER PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL)')
-        # 2. جدول الآيات المنفصلة (آية آية بدقة مطلقة)
-        conn.execute('CREATE TABLE verses (id INTEGER PRIMARY KEY AUTOINCREMENT, surah_id INTEGER, verse_number INTEGER, text TEXT NOT NULL)')
-        # 3. جدول الأذكار الكاملة
-        conn.execute('CREATE TABLE azkar (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL, text TEXT NOT NULL, count INTEGER NOT NULL)')
-        
-        # 🕌 ضخ الفهرس
-        conn.execute("INSERT INTO surahs (id, name, type) VALUES (1, 'الفَاتِحَة', 'مكية')")
-        conn.execute("INSERT INTO surahs (id, name, type) VALUES (112, 'الإخْلَاص', 'مكية')")
-        conn.execute("INSERT INTO surahs (id, name, type) VALUES (113, 'الفَلَق', 'مكية')")
-        conn.execute("INSERT INTO surahs (id, name, type) VALUES (114, 'النَّاس', 'مكية')")
-        
-        # 📖 ضخ آيات سورة الفاتحة بدقة ومقسمة آية آية
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 1, 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 2, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 3, 'الرَّحْمَٰنِ الرَّحِيمِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 4, 'مَالِكِ يَوْمِ الدِّينِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 5, 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 6, 'اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 7, 'صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ')")
 
-        # 📖 ضخ سورة الإخلاص آية آية
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (112, 1, 'قُلْ هُوَ اللَّهُ أَحَدٌ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (112, 2, 'اللَّهُ الصَّمَدُ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (112, 3, 'لَمْ يَلِدْ وَلَمْ يُولَدْ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (112, 4, 'لَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ')")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS surahs (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                number_of_ayahs INTEGER NOT NULL
+            )
+        """)
 
-        # 📖 ضخ سورة الفلق آية آية
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 1, 'قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 2, 'مِن شَرِّ مَا خَلَقَ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 3, 'وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 4, 'وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 5, 'وَمِن شَرِّ حَاسدٍ إِذَا حَسَدَ')")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS verses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                surah_id INTEGER NOT NULL,
+                verse_number INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                UNIQUE(surah_id, verse_number)
+            )
+        """)
 
-        # 📖 ضخ سورة الناس آية آية
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 1, 'قُلْ أَعُوذُ بِرَبِّ النَّاسِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 2, 'مَلِكِ النَّاسِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 3, 'إِلَٰهِ النَّاسِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 4, 'مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 5, 'الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ')")
-        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 6, 'مِنَ الْجِنَّةِ وَالنَّاسِ')")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS azkar (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT NOT NULL,
+                text TEXT NOT NULL,
+                count INTEGER NOT NULL
+            )
+        """)
 
-        # ☀️ ضخ نصوص أذكار الصباح كاملة وموسعة
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '📜 اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ.', 1)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '☀️ أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.', 1)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '🛡️ بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.', 3)")
-
-        # 🌙 أذكار المساء كاملة وموسعة
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '📜 اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ... (آية الكرسي كاملة للمساء)', 1)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🌙 أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ.', 1)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🌿 أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.', 3)")
         conn.commit()
 
-init_db()
 
-@app.route('/')
-def index(): return send_from_directory('.', 'index.html')
+# =========================================================
+# تحميل القرآن لأول مرة
+# =========================================================
 
-@app.route('/api/surahs', methods=['GET'])
-def get_surahs():
-    with get_db() as conn: surahs = conn.execute('SELECT * FROM surahs ORDER BY id ASC').fetchall()
-    return jsonify([dict(s) for s in surahs])
+def quran_is_ready():
 
-@app.route('/api/surah/<int:surah_id>', methods=['GET'])
-def get_surah_content(surah_id):
     with get_db() as conn:
-        surah_info = conn.execute('SELECT * FROM surahs WHERE id = ?', (surah_id,)).fetchone()
-        verses = conn.execute('SELECT verse_number, text FROM verses WHERE surah_id = ? ORDER BY verse_number ASC', (surah_id,)).fetchall()
-    if surah_info:
-        return jsonify({'name': surah_info['name'], 'type': surah_info['type'], 'verses': [dict(v) for v in verses]})
-    return jsonify({'status': 'error'}), 404
 
-@app.route('/api/azkar', methods=['GET'])
+        surah_count = conn.execute(
+            "SELECT COUNT(*) FROM surahs"
+        ).fetchone()[0]
+
+        verse_count = conn.execute(
+            "SELECT COUNT(*) FROM verses"
+        ).fetchone()[0]
+
+    return surah_count == 114 and verse_count > 6000
+
+
+def download_quran():
+
+    print("📖 جاري تجهيز القرآن الكريم...")
+
+    url = f"{QURAN_API}/quran/{QURAN_EDITION}"
+
+    response = requests.get(
+        url,
+        timeout=60
+    )
+
+    response.raise_for_status()
+
+    result = response.json()
+
+    if result.get("code") != 200:
+        raise RuntimeError("مصدر القرآن لم يرجع بيانات صحيحة.")
+
+    data = result["data"]
+
+    surahs = data["surahs"]
+
+    if len(surahs) != 114:
+        raise RuntimeError(
+            f"تم استلام {len(surahs)} سورة فقط، وليس 114."
+        )
+
+    with get_db() as conn:
+
+        conn.execute("DELETE FROM verses")
+        conn.execute("DELETE FROM surahs")
+
+        for surah in surahs:
+
+            surah_id = surah["number"]
+            name = surah["name"]
+
+            revelation_type = surah.get(
+                "revelationType",
+                "غير محدد"
+            )
+
+            arabic_type = (
+                "مكية"
+                if revelation_type.lower() == "meccan"
+                else "مدنية"
+            )
+
+            ayahs = surah["ayahs"]
+
+            conn.execute(
+                """
+                INSERT INTO surahs
+                (id, name, type, number_of_ayahs)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    surah_id,
+                    name,
+                    arabic_type,
+                    len(ayahs)
+                )
+            )
+
+            for ayah in ayahs:
+
+                conn.execute(
+                    """
+                    INSERT INTO verses
+                    (surah_id, verse_number, text)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        surah_id,
+                        ayah["numberInSurah"],
+                        ayah["text"]
+                    )
+                )
+
+        conn.commit()
+
+    print("✅ تم حفظ القرآن الكريم كاملًا.")
+
+
+# =========================================================
+# الأذكار
+# =========================================================
+
+def insert_default_azkar():
+
+    with get_db() as conn:
+
+        count = conn.execute(
+            "SELECT COUNT(*) FROM azkar"
+        ).fetchone()[0]
+
+        if count > 0:
+            return
+
+        azkar = [
+
+            # ---------------- صباح ----------------
+
+            (
+                "sabah",
+                "أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ. اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ، لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ، لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ، مَنْ ذَا الَّذِي يَشْفَعُ عِنْدَهُ إِلَّا بِإِذْنِهِ، يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ، وَلَا يُحِيطُونَ بِشَيْءٍ مِنْ عِلْمِهِ إِلَّا بِمَا شَاءَ، وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ، وَلَا يَئُودُهُ حِفْظُهُمَا، وَهُوَ الْعَلِيُّ الْعَظِيمُ.",
+                1
+            ),
+
+            (
+                "sabah",
+                "قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.",
+                3
+            ),
+
+            (
+                "sabah",
+                "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.",
+                3
+            ),
+
+            (
+                "sabah",
+                "قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.",
+                3
+            ),
+
+            (
+                "sabah",
+                "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+                1
+            ),
+
+            (
+                "sabah",
+                "اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ.",
+                1
+            ),
+
+            (
+                "sabah",
+                "رَضِيتُ بِاللَّهِ رَبًّا، وَبِالإِسْلَامِ دِينًا، وَبِمُحَمَّدٍ ﷺ نَبِيًّا.",
+                3
+            ),
+
+            (
+                "sabah",
+                "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ.",
+                1
+            ),
+
+            (
+                "sabah",
+                "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.",
+                3
+            ),
+
+            # ---------------- مساء ----------------
+
+            (
+                "masaa",
+                "أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ. اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ، لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ، لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ، مَنْ ذَا الَّذِي يَشْفَعُ عِنْدَهُ إِلَّا بِإِذْنِهِ، يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ، وَلَا يُحِيطُونَ بِشَيْءٍ مِنْ عِلْمِهِ إِلَّا بِمَا شَاءَ، وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ، وَلَا يَئُودُهُ حِفْظُهُمَا، وَهُوَ الْعَلِيُّ الْعَظِيمُ.",
+                1
+            ),
+
+            (
+                "masaa",
+                "قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.",
+                3
+            ),
+
+            (
+                "masaa",
+                "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.",
+                3
+            ),
+
+            (
+                "masaa",
+                "قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.",
+                3
+            ),
+
+            (
+                "masaa",
+                "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+                1
+            ),
+
+            (
+                "masaa",
+                "اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ.",
+                1
+            ),
+
+            (
+                "masaa",
+                "رَضِيتُ بِاللَّهِ رَبًّا، وَبِالإِسْلَامِ دِينًا، وَبِمُحَمَّدٍ ﷺ نَبِيًّا.",
+                3
+            ),
+
+            (
+                "masaa",
+                "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.",
+                3
+            ),
+
+            (
+                "masaa",
+                "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ.",
+                1
+            )
+        ]
+
+
+        conn.executemany(
+            """
+            INSERT INTO azkar
+            (category, text, count)
+            VALUES (?, ?, ?)
+            """,
+            azkar
+        )
+
+        conn.commit()
+
+
+# =========================================================
+# تهيئة المشروع
+# =========================================================
+
+def initialize():
+
+    create_tables()
+
+    if not quran_is_ready():
+
+        try:
+            download_quran()
+
+        except Exception as error:
+
+            print("❌ تعذر تحميل القرآن:")
+            print(error)
+
+            print(
+                "سيعمل التطبيق، لكن يجب تشغيل السيرفر مرة أخرى "
+                "بعد توفر الإنترنت."
+            )
+
+    insert_default_azkar()
+
+
+initialize()
+
+
+# =========================================================
+# الصفحات
+# =========================================================
+
+@app.route("/")
+def index():
+
+    return send_from_directory(
+        ".",
+        "index.html"
+    )
+
+
+# =========================================================
+# API السور
+# =========================================================
+
+@app.route("/api/surahs", methods=["GET"])
+def get_surahs():
+
+    with get_db() as conn:
+
+        rows = conn.execute(
+            """
+            SELECT id, name, type, number_of_ayahs
+            FROM surahs
+            ORDER BY id
+            """
+        ).fetchall()
+
+    return jsonify([
+        dict(row)
+        for row in rows
+    ])
+
+
+# =========================================================
+# API سورة واحدة
+# =========================================================
+
+@app.route("/api/surah/<int:surah_id>", methods=["GET"])
+def get_surah(surah_id):
+
+    if not 1 <= surah_id <= 114:
+
+        return jsonify({
+            "error": "رقم السورة غير صحيح"
+        }), 400
+
+
+    with get_db() as conn:
+
+        surah = conn.execute(
+            """
+            SELECT *
+            FROM surahs
+            WHERE id = ?
+            """,
+            (surah_id,)
+        ).fetchone()
+
+
+        verses = conn.execute(
+            """
+            SELECT verse_number, text
+            FROM verses
+            WHERE surah_id = ?
+            ORDER BY verse_number
+            """,
+            (surah_id,)
+        ).fetchall()
+
+
+    if not surah:
+
+        return jsonify({
+            "error": "السورة غير موجودة"
+        }), 404
+
+
+    return jsonify({
+        "id": surah["id"],
+        "name": surah["name"],
+        "type": surah["type"],
+        "number_of_ayahs": surah["number_of_ayahs"],
+        "verses": [
+            dict(verse)
+            for verse in verses
+        ]
+    })
+
+
+# =========================================================
+# البحث في القرآن
+# =========================================================
+
+@app.route("/api/search", methods=["GET"])
+def search_quran():
+
+    query = request.args.get(
+        "q",
+        ""
+    ).strip()
+
+
+    if len(query) < 2:
+
+        return jsonify([])
+
+
+    with get_db() as conn:
+
+        rows = conn.execute(
+            """
+            SELECT
+                verses.surah_id,
+                surahs.name AS surah_name,
+                verses.verse_number,
+                verses.text
+            FROM verses
+            INNER JOIN surahs
+                ON surahs.id = verses.surah_id
+            WHERE verses.text LIKE ?
+            ORDER BY verses.surah_id, verses.verse_number
+            LIMIT 100
+            """,
+            (f"%{query}%",)
+        ).fetchall()
+
+
+    return jsonify([
+        dict(row)
+        for row in rows
+    ])
+
+
+# =========================================================
+# الأذكار
+# =========================================================
+
+@app.route("/api/azkar", methods=["GET"])
 def get_azkar():
-    cat = request.args.get('category', 'sabah')
-    with get_db() as conn: az = conn.execute('SELECT * FROM azkar WHERE category = ?', (cat,)).fetchall()
-    return jsonify([dict(a) for a in az])
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    category = request.args.get(
+        "category",
+        "sabah"
+    )
 
+
+    if category not in ["sabah", "masaa"]:
+
+        return jsonify({
+            "error": "قسم الأذكار غير صحيح"
+        }), 400
+
+
+    with get_db() as conn:
+
+        rows = conn.execute(
+            """
+            SELECT id, text, count
+            FROM azkar
+            WHERE category = ?
+            ORDER BY id
+            """,
+            (category,)
+        ).fetchall()
+
+
+    return jsonify([
+        dict(row)
+        for row in rows
+    ])
+
+
+# =========================================================
+# Health Check
+# =========================================================
+
+@app.route("/api/health", methods=["GET"])
+def health():
+
+    with get_db() as conn:
+
+        surahs = conn.execute(
+            "SELECT COUNT(*) FROM surahs"
+        ).fetchone()[0]
+
+        verses = conn.execute(
+            "SELECT COUNT(*) FROM verses"
+        ).fetchone()[0]
+
+
+    return jsonify({
+        "status": "ok",
+        "surahs": surahs,
+        "verses": verses
+    })
+
+
+# =========================================================
+# تشغيل السيرفر
+# =========================================================
+
+if __name__ == "__main__":
+
+    port = int(
+        os.environ.get(
+            "PORT",
+            5000
+        )
+    )
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=False
+    )
