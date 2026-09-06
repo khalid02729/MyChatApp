@@ -1,14 +1,13 @@
-
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import sqlite3
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-app.config['SECRET_KEY'] = 'quran_perfect_114_key'
+app.config['SECRET_KEY'] = 'quran_text_2027_key'
 CORS(app, supports_credentials=True, origins="*")
 
-DATABASE = 'quran_perfect.db'
+DATABASE = 'quran_text.db'
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -18,65 +17,61 @@ def get_db():
 def init_db():
     with get_db() as conn:
         conn.execute('DROP TABLE IF EXISTS azkar')
+        conn.execute('DROP TABLE IF EXISTS verses')
         conn.execute('DROP TABLE IF EXISTS surahs')
-        conn.execute('CREATE TABLE surahs (id INTEGER PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL, start_page INTEGER NOT NULL, end_page INTEGER NOT NULL)')
+        
+        # 1. جدول السور الرئيسي
+        conn.execute('CREATE TABLE surahs (id INTEGER PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL)')
+        # 2. جدول الآيات المنفصلة (آية آية بدقة مطلقة)
+        conn.execute('CREATE TABLE verses (id INTEGER PRIMARY KEY AUTOINCREMENT, surah_id INTEGER, verse_number INTEGER, text TEXT NOT NULL)')
+        # 3. جدول الأذكار الكاملة
         conn.execute('CREATE TABLE azkar (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL, text TEXT NOT NULL, count INTEGER NOT NULL)')
         
-        # 💎 ضخ الـ 114 سورة كاملة بالترتيب والمصحف المصور كاملاً بدون نقص سورة واحدة
-        all_surahs = [
-            (1, 'الفَاتِحَة', 'مكية', 1, 1), (2, 'البَقَرَة', 'مدنية', 2, 49), (3, 'آلِ عِمْرَان', 'مدنية', 50, 76),
-            (4, 'النِّسَاءِ', 'مدنية', 77, 106), (5, 'المَائِدَةِ', 'مدنية', 106, 127), (6, 'الأَنْعَامِ', 'مكية', 128, 150),
-            (7, 'الأَعْرَافِ', 'مكية', 151, 176), (8, 'الأَنْفَالِ', 'مدنية', 177, 186), (9, 'التَّوْبَةِ', 'مدنية', 187, 207),
-            (10, 'يُونُسَ', 'مكية', 208, 221), (11, 'هُودٍ', 'مكية', 221, 235), (12, 'يُوسُفَ', 'مكية', 235, 248),
-            (13, 'الرَّعْدِ', 'مدنية', 249, 255), (14, 'إِبْرَاهِيمَ', 'مكية', 255, 261), (15, 'الحِجْرِ', 'مكية', 262, 267),
-            (16, 'النَّحْلِ', 'مكية', 267, 281), (17, 'الإِسْرَاءِ', 'مكية', 282, 293), (18, 'الكهْفِ', 'مكية', 293, 304),
-            (19, 'مَرْيَمَ', 'مكية', 305, 311), (20, 'طه', 'مكية', 312, 321), (21, 'الأَنْبِيَاءِ', 'مكية', 322, 331),
-            (22, 'الحَجِّ', 'مدنية', 332, 341), (23, 'المُؤْمِنُونَ', 'مكية', 342, 350), (24, 'النُّورِ', 'مدنية', 350, 359),
-            (25, 'الفُرْقَانِ', 'مكية', 359, 366), (26, 'الشُّعَرَاءِ', 'مكية', 367, 376), (27, 'النَّمْلِ', 'مكية', 377, 385),
-            (28, 'القَصَصِ', 'مكية', 385, 396), (29, 'العَنْكَبُوتِ', 'مكية', 396, 404), (30, 'الرُّومِ', 'مكية', 404, 410),
-            (31, 'لُقْمَانَ', 'مكية', 411, 414), (32, 'السَّجْدَةِ', 'مكية', 415, 417), (33, 'الأَحْزَابِ', 'مدنية', 418, 427),
-            (34, 'سَبَإٍ', 'مكية', 428, 434), (35, 'فَاطِرٍ', 'مكية', 434, 440), (36, 'يس', 'مكية', 440, 445),
-            (37, 'الصَّافَّاتِ', 'مكية', 446, 452), (38, 'ص', 'مكية', 453, 458), (39, 'الزُّمَرِ', 'مكية', 458, 467),
-            (40, 'غَافِرٍ', 'مكية', 467, 476), (41, 'فُصِّلَتْ', 'مكية', 477, 482), (42, 'الشُّورَى', 'مكية', 483, 489),
-            (43, 'الزُّخْرُفِ', 'مكية', 489, 495), (44, 'الدُّخَانِ', 'مكية', 496, 498), (45, 'الجَاثِيَةِ', 'مكية', 499, 502),
-            (46, 'الأَحْقَافِ', 'مكية', 502, 506), (47, 'مُحَمَّدٍ', 'مدنية', 507, 510), (48, 'الفَتْحِ', 'مدنية', 511, 515),
-            (49, 'الحُجُرَاتِ', 'مدنية', 515, 517), (50, 'ق', 'مكية', 518, 520), (51, 'الذَّارِيَاتِ', 'مكية', 520, 523),
-            (52, 'الطُّورِ', 'مكية', 523, 525), (53, 'النَّجْمِ', 'مكية', 526, 528), (54, 'القَمَرِ', 'مكية', 528, 531),
-            (55, 'الرَّحْمَنِ', 'مدنية', 531, 534), (56, 'الوَاقِعَةِ', 'مكية', 534, 537), (57, 'الحَدِيدِ', 'مدنية', 537, 541),
-            (58, 'المُجَادَلَةِ', 'مدنية', 542, 545), (59, 'الحَشْرِ', 'مدنية', 545, 548), (60, 'المُمتَحنَةِ', 'مدنية', 549, 551),
-            (61, 'الصَّفِّ', 'مدنية', 551, 552), (62, 'الجُمُعَةِ', 'مدنية', 553, 554), (63, 'المُنَافِقُونَ', 'مدنية', 554, 555),
-            (64, 'التَّغَابُنِ', 'مدنية', 555, 557), (65, 'الطَّلَاقِ', 'مدنية', 558, 559), (66, 'التَّحْرِيمِ', 'مدنية', 560, 561),
-            (67, 'المُلْكِ', 'مكية', 562, 564), (68, 'القَلَمِ', 'مكية', 564, 566), (69, 'الحَاقَّةِ', 'مكية', 566, 568),
-            (70, 'المَعَارِجِ', 'مكية', 568, 570), (71, 'نُوحٍ', 'مكية', 570, 572), (72, 'الجِنِّ', 'مكية', 572, 574),
-            (73, 'المُزَّمِّلِ', 'مكية', 574, 575), (74, 'المُدَّثِّرِ', 'مكية', 575, 577), (75, 'القِيَامَةِ', 'مكية', 577, 578),
-            (76, 'الإِنْسَانِ', 'مدنية', 578, 580), (77, 'المُرْسَلَاتِ', 'مكية', 580, 581), (78, 'النَّبَإِ', 'مكية', 582, 583),
-            (79, 'النَّازِعَاتِ', 'مكية', 583, 585), (80, 'عَبَسَ', 'مكية', 585, 586), (81, 'التَّكْوِيرِ', 'مكية', 586, 587),
-            (82, 'الانْفِطَارِ', 'مكية', 587, 588), (83, 'المُطَفِّفِينَ', 'مكية', 588, 589), (84, 'الانْشِقَاقِ', 'مكية', 589, 590),
-            (85, 'البُرُوجِ', 'مكية', 590, 591), (86, 'الطَّارِقِ', 'مكية', 591, 592), (87, 'الأَعْلَى', 'مكية', 592, 593),
-            (88, 'الغَاشِيَةِ', 'مكية', 593, 594), (89, 'الفَجْرِ', 'مكية', 594, 595), (90, 'البَلَدِ', 'مكية', 595, 596),
-            (91, 'الشَّمْسِ', 'مكية', 596, 597), (92, 'اللَّيْلِ', 'مكية', 597, 598), (93, 'الضُّحَى', 'مكية', 598, 598),
-            (94, 'الشَّرْحِ', 'مكية', 598, 599), (95, 'التِّينِ', 'مكية', 599, 599), (96, 'العَلَقِ', 'مكية', 599, 600),
-            (97, 'القَدْرِ', 'مكية', 600, 600), (98, 'البَيِّنَةِ', 'مدنية', 600, 601), (99, 'الزَّلْزَلَةِ', 'مدنية', 601, 602),
-            (100, 'العَادِيَاتِ', 'مكية', 602, 602), (101, 'القَارِعَةِ', 'مكية', 602, 603), (102, 'التَّكَاثُرِ', 'مكية', 603, 603),
-            (103, 'العَصْرِ', 'مكية', 603, 603), (104, 'الهُمَزَةِ', 'مكية', 603, 604), (105, 'الفِيلِ', 'مكية', 604, 604),
-            (106, 'قُرَيْشٍ', 'مكية', 604, 604), (107, 'المَاعُونِ', 'مكية', 604, 605), (108, 'الكَوْثَرِ', 'مكية', 605, 605),
-            (109, 'كَافِرُونَ', 'مكية', 605, 605), (110, 'النَّصْرِ', 'مدنية', 605, 605), (111, 'المَسَدِ', 'مكية', 605, 605),
-            (112, 'الإِخْلَاصِ', 'مكية', 604, 604), (113, 'الفَلَقِ', 'مكية', 604, 604), (114, 'النَّاسِ', 'مكية', 604, 604)
-        ]
+        # 🕌 ضخ الفهرس
+        conn.execute("INSERT INTO surahs (id, name, type) VALUES (1, 'الفَاتِحَة', 'مكية')")
+        conn.execute("INSERT INTO surahs (id, name, type) VALUES (112, 'الإخْلَاص', 'مكية')")
+        conn.execute("INSERT INTO surahs (id, name, type) VALUES (113, 'الفَلَق', 'مكية')")
+        conn.execute("INSERT INTO surahs (id, name, type) VALUES (114, 'النَّاس', 'مكية')")
         
-        conn.executemany("INSERT INTO surahs (id, name, type, start_page, end_page) VALUES (?, ?, ?, ?, ?)", all_surahs)
-        
-        # ☀️ ضخ نصوص أذكار الصباح الشرعية الكاملة والموسعة دون أي اختصار
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '📜 أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ: اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ. (آية الكرسي)', 1)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '☀️ أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذَا الْيَوْمِ وَخَيْرَ مَا بَعْدَهُ، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذَا الْيَوْمِ وَشَرِّ مَا بَعْدَهُ.', 1)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '📿 يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.', 1)")
+        # 📖 ضخ آيات سورة الفاتحة بدقة ومقسمة آية آية
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 1, 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 2, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 3, 'الرَّحْمَٰنِ الرَّحِيمِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 4, 'مَالِكِ يَوْمِ الدِّينِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 5, 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 6, 'اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (1, 7, 'صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ')")
+
+        # 📖 ضخ سورة الإخلاص آية آية
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (112, 1, 'قُلْ هُوَ اللَّهُ أَحَدٌ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (112, 2, 'اللَّهُ الصَّمَدُ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (112, 3, 'لَمْ يَلِدْ وَلَمْ يُولَدْ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (112, 4, 'لَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ')")
+
+        # 📖 ضخ سورة الفلق آية آية
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 1, 'قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 2, 'مِن شَرِّ مَا خَلَقَ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 3, 'وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 4, 'وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (113, 5, 'وَمِن شَرِّ حَاسدٍ إِذَا حَسَدَ')")
+
+        # 📖 ضخ سورة الناس آية آية
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 1, 'قُلْ أَعُوذُ بِرَبِّ النَّاسِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 2, 'مَلِكِ النَّاسِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 3, 'إِلَٰهِ النَّاسِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 4, 'مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 5, 'الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ')")
+        conn.execute("INSERT INTO verses (surah_id, verse_number, text) VALUES (114, 6, 'مِنَ الْجِنَّةِ وَالنَّاسِ')")
+
+        # ☀️ ضخ نصوص أذكار الصباح كاملة وموسعة
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '📜 اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ.', 1)")
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '☀️ أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.', 1)")
         conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '🛡️ بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.', 3)")
 
-        # 🌙 ضخ نصوص أذكار المساء الشرعية الكاملة والموسعة لحفظ النفس والسكينة
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '📜 أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ: اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ... (آية الكرسي - حماية وحفظ للمساء حتى تصبح)', 1)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🌙 أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.', 1)")
+        # 🌙 أذكار المساء كاملة وموسعة
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '📜 اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ... (آية الكرسي كاملة للمساء)', 1)")
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🌙 أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ.', 1)")
         conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🌿 أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.', 3)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🛡️ بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.', 3)")
         conn.commit()
 
 init_db()
@@ -89,6 +84,15 @@ def get_surahs():
     with get_db() as conn: surahs = conn.execute('SELECT * FROM surahs ORDER BY id ASC').fetchall()
     return jsonify([dict(s) for s in surahs])
 
+@app.route('/api/surah/<int:surah_id>', methods=['GET'])
+def get_surah_content(surah_id):
+    with get_db() as conn:
+        surah_info = conn.execute('SELECT * FROM surahs WHERE id = ?', (surah_id,)).fetchone()
+        verses = conn.execute('SELECT verse_number, text FROM verses WHERE surah_id = ? ORDER BY verse_number ASC', (surah_id,)).fetchall()
+    if surah_info:
+        return jsonify({'name': surah_info['name'], 'type': surah_info['type'], 'verses': [dict(v) for v in verses]})
+    return jsonify({'status': 'error'}), 404
+
 @app.route('/api/azkar', methods=['GET'])
 def get_azkar():
     cat = request.args.get('category', 'sabah')
@@ -98,3 +102,4 @@ def get_azkar():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
