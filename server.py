@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import requests
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -10,9 +9,6 @@ app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
 
 DATABASE = "quran_text.db"
-
-QURAN_API = "https://api.alquran.cloud/v1"
-QURAN_EDITION = "quran-uthmani"
 
 
 # =========================================================
@@ -61,7 +57,7 @@ def create_tables():
 
 
 # =========================================================
-# تحميل القرآن لأول مرة
+# التحقق من وجود القرآن محليًا
 # =========================================================
 
 def quran_is_ready():
@@ -76,91 +72,10 @@ def quran_is_ready():
             "SELECT COUNT(*) FROM verses"
         ).fetchone()[0]
 
-    return surah_count == 114 and verse_count > 6000
-
-
-def download_quran():
-
-    print("📖 جاري تجهيز القرآن الكريم...")
-
-    url = f"{QURAN_API}/quran/{QURAN_EDITION}"
-
-    response = requests.get(
-        url,
-        timeout=60
+    return (
+        surah_count == 114
+        and verse_count > 6000
     )
-
-    response.raise_for_status()
-
-    result = response.json()
-
-    if result.get("code") != 200:
-        raise RuntimeError("مصدر القرآن لم يرجع بيانات صحيحة.")
-
-    data = result["data"]
-
-    surahs = data["surahs"]
-
-    if len(surahs) != 114:
-        raise RuntimeError(
-            f"تم استلام {len(surahs)} سورة فقط، وليس 114."
-        )
-
-    with get_db() as conn:
-
-        conn.execute("DELETE FROM verses")
-        conn.execute("DELETE FROM surahs")
-
-        for surah in surahs:
-
-            surah_id = surah["number"]
-            name = surah["name"]
-
-            revelation_type = surah.get(
-                "revelationType",
-                "غير محدد"
-            )
-
-            arabic_type = (
-                "مكية"
-                if revelation_type.lower() == "meccan"
-                else "مدنية"
-            )
-
-            ayahs = surah["ayahs"]
-
-            conn.execute(
-                """
-                INSERT INTO surahs
-                (id, name, type, number_of_ayahs)
-                VALUES (?, ?, ?, ?)
-                """,
-                (
-                    surah_id,
-                    name,
-                    arabic_type,
-                    len(ayahs)
-                )
-            )
-
-            for ayah in ayahs:
-
-                conn.execute(
-                    """
-                    INSERT INTO verses
-                    (surah_id, verse_number, text)
-                    VALUES (?, ?, ?)
-                    """,
-                    (
-                        surah_id,
-                        ayah["numberInSurah"],
-                        ayah["text"]
-                    )
-                )
-
-        conn.commit()
-
-    print("✅ تم حفظ القرآن الكريم كاملًا.")
 
 
 # =========================================================
@@ -180,7 +95,7 @@ def insert_default_azkar():
 
         azkar = [
 
-            # ---------------- صباح ----------------
+            # ================= أذكار الصباح =================
 
             (
                 "sabah",
@@ -236,7 +151,8 @@ def insert_default_azkar():
                 3
             ),
 
-            # ---------------- مساء ----------------
+
+            # ================= أذكار المساء =================
 
             (
                 "masaa",
@@ -307,36 +223,37 @@ def insert_default_azkar():
 
 
 # =========================================================
-# تهيئة المشروع
+# تهيئة المشروع - Offline
 # =========================================================
 
 def initialize():
 
     create_tables()
 
-    if not quran_is_ready():
+    if quran_is_ready():
 
-        try:
-            download_quran()
+        print("📖 القرآن الكريم موجود محليًا.")
+        print("✅ تم العثور على 114 سورة.")
 
-        except Exception as error:
+    else:
 
-            print("❌ تعذر تحميل القرآن:")
-            print(error)
-
-            print(
-                "سيعمل التطبيق، لكن يجب تشغيل السيرفر مرة أخرى "
-                "بعد توفر الإنترنت."
-            )
+        print("⚠️ تحذير:")
+        print("قاعدة بيانات القرآن غير مكتملة.")
+        print("تأكد أن quran_text.db هي قاعدة البيانات الأصلية.")
 
     insert_default_azkar()
+
+    print("========================================")
+    print("🔒 وضع Offline مفعل")
+    print("🌐 لا يوجد اتصال بالإنترنت")
+    print("========================================")
 
 
 initialize()
 
 
 # =========================================================
-# الصفحات
+# الصفحة الرئيسية
 # =========================================================
 
 @app.route("/")
@@ -527,11 +444,17 @@ def health():
             "SELECT COUNT(*) FROM verses"
         ).fetchone()[0]
 
+        azkar = conn.execute(
+            "SELECT COUNT(*) FROM azkar"
+        ).fetchone()[0]
+
 
     return jsonify({
-        "status": "ok",
+        "status": "offline",
+        "internet_required": False,
         "surahs": surahs,
-        "verses": verses
+        "verses": verses,
+        "azkar": azkar
     })
 
 
@@ -548,8 +471,16 @@ if __name__ == "__main__":
         )
     )
 
+    print("")
+    print("========================================")
+    print("📖 المصحف الشريف والأذكار")
+    print("🔒 وضع Offline")
+    print("🌐 لا يحتاج إلى إنترنت")
+    print("========================================")
+    print("")
+
     app.run(
-        host="0.0.0.0",
+        host="127.0.0.1",
         port=port,
         debug=False
     )
