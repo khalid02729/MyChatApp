@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة الثانوية العامة 2027</title>
+    <title>المصحف الشريف والأذكار اليومية</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cloudflare.com">
     
-    <!-- 🎯 مصيدة أخطاء المتصفح والـ HTML الشاملة المجمّعة -->
+    <!-- 🎯 مصيدة أخطاء المتصفح والـ HTML الشاملة المجمّعة بناءً على فكرتك الذكية -->
     <script>
         window.allHtmlErrors = [];
         window.onerror = function(msg, url, line, col) {
@@ -15,7 +15,7 @@
             window.allHtmlErrors.push(log);
             setTimeout(function() {
                 if(window.allHtmlErrors.length > 0) {
-                    alert("🚨 تقرير مصيدة أخطاء الواجهة المجمّع:\n\n" + window.allHtmlErrors.join("\n\n"));
+                    alert("🚨 تقرير مصيدة أخطاء الواجهة الإسلامية المجمّع:\n\n" + window.allHtmlErrors.join("\n\n"));
                     window.allHtmlErrors = [];
                 }
             }, 100);
@@ -26,119 +26,181 @@
 <body>
 
     <div class="app-container">
-        <!-- الهيدر العلوي الفخم -->
+        <!-- الهيدر الإسلامي الفخم والجاذب -->
         <header class="app-header">
             <div class="logo-area">
-                <i class="fas fa-graduation-cap animated-cap"></i>
-                <h1>ثانوية عامة 2027</h1>
+                <i class="fas fa-quran animated-quran"></i>
+                <h1>المصحف الشريف والأذكار</h1>
             </div>
-            <p class="subtitle">تصفح وقراءة الكتب الخارجية مباشرة وبكامل حريتك</p>
+            <p class="subtitle">صدقة جارية - قراءة القرآن الكريم وأذكار الصباح والمساء</p>
+            
+            <!-- أزرار التصفح والتبويب الرئيسية في الأعلى لجذب القارئ -->
+            <div class="main-tabs">
+                <button onclick="switchTab('quran')" id="tab-quran" class="tab-btn active-tab"><i class="fas fa-book-open"></i> سور القرآن</button>
+                <button onclick="switchTab('azkar')" id="tab-azkar" class="tab-btn"><i class="fas fa-pray"></i> الأذكار اليومية</button>
+            </div>
         </header>
 
-        <!-- الشاشة الأولى: اختيار الشعبة -->
-        <div id="track-screen" class="screen-view">
-            <h3 class="section-title">اختر الشعبة الدراسية للبدء:</h3>
-            <div class="tracks-grid">
-                <div class="track-card" onclick="loadSubjects('elmi_oloom')">
-                    <div class="icon-circle oloom"><i class="fas fa-flask"></i></div>
-                    <h3>علمي علوم</h3>
-                    <p>كيمياء، فيزياء، أحياء...</p>
+        <!-- ================= قسم القرآن الكريم ================= -->
+        <div id="quran-section" class="tab-content">
+            <!-- شاشة فهرس السور -->
+            <div id="surahs-index-view">
+                <h3 class="section-title">فهرس السور المباركة:</h3>
+                <div class="surahs-grid" id="surahs-container">
+                    <div class="loading-text">جاري تحميل الفهرس المبارك...</div>
                 </div>
-                <div class="track-card" onclick="loadSubjects('elmi_riada')">
-                    <div class="icon-circle riada"><i class="fas fa-calculator"></i></div>
-                    <h3>علمي رياضة</h3>
-                    <p>كيمياء، فيزياء، رياضيات...</p>
+            </div>
+
+            <!-- شاشة قراءة نصوص الآيات كاملة (مخفية بالبداية) -->
+            <div id="surah-reading-view" class="hidden">
+                <div class="navigation-bar">
+                    <button onclick="backToSurahsIndex()" class="back-btn"><i class="fas fa-arrow-right"></i> الفهرس</button>
+                    <h3 id="current-surah-title" class="surah-header-title">اسم السورة</h3>
                 </div>
-                <div class="track-card" onclick="loadSubjects('adabi')">
-                    <div class="icon-circle adabi"><i class="fas fa-book-open"></i></div>
-                    <h3>أدبي</h3>
-                    <p>تاريخ، جغرافيا، فلسفة، علم نفس...</p>
+                <div class="quran-card-reader">
+                    <p class="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
+                    <div id="surah-text-content" class="quran-verses-text"></div>
                 </div>
             </div>
         </div>
 
-        <!-- الشاشة الثانية: قائمة المواد (تدخلك للكتاب مباشر) -->
-        <div id="subjects-screen" class="screen-view hidden">
-            <div class="navigation-bar">
-                <button onclick="showScreen('track-screen')" class="back-btn"><i class="fas fa-arrow-right"></i> العودة للشعب</button>
-                <h3 id="current-track-title" class="section-title">المواد الدراسية - اضغط لفتح الكتاب فوراً</h3>
+        <!-- ================= قسم الأذكار والمسبحة ================= -->
+        <div id="azkar-section" class="tab-content hidden">
+            <!-- شاشة اختيار تصنيف الذكر -->
+            <div id="azkar-index-view">
+                <h3 class="section-title">أذكار الحفظ والتحصين اليومي:</h3>
+                <div class="azkar-categories-grid">
+                    <div class="azkar-card category-sabah" onclick="loadAzkarData('sabah', 'أذكار الصباح ☀️')">
+                        <i class="fas fa-sun"></i>
+                        <h3>أذكار الصباح</h3>
+                        <p>تُقرأ من بعد صلاة الفجر إلى شروق الشمس</p>
+                    </div>
+                    <div class="azkar-card category-masaa" onclick="loadAzkarData('masaa', 'أذكار المساء 🌙')">
+                        <i class="fas fa-moon"></i>
+                        <h3>أذكار المساء</h3>
+                        <p>تُقرأ من بعد صلاة العصر إلى غروب الشمس</p>
+                    </div>
+                </div>
             </div>
-            <div class="subjects-grid" id="subjects-container"></div>
+
+            <!-- شاشة عرض نصوص الأذكار بالعداد الرقمي التفاعلي -->
+            <div id="azkar-list-view" class="hidden">
+                <div class="navigation-bar">
+                    <button onclick="backToAzkarIndex()" class="back-btn"><i class="fas fa-arrow-right"></i> الأقسام</button>
+                    <h3 id="current-azkar-title" class="section-title">أذكار</h3>
+                </div>
+                <div class="azkar-list-container" id="azkar-container"></div>
+            </div>
         </div>
     </div>
 
-    <!-- كود الحركة والاتصال المباشر بالسيرفر -->
+    <!-- 🎯 كود الحركة والـ Fetch الداخلي الذكي لمنع الكاش نهائياً -->
     <script>
         const SERVER_URL = window.location.protocol + "//" + window.location.host;
 
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen-view').forEach(s => s.classList.add('hidden'));
-            document.getElementById(screenId).classList.remove('hidden');
+        // عند فتح الصفحة، نجلب الفهرس فوراً طازة
+        window.onload = function() {
+            loadSurahsIndex();
+        };
+
+        // التبديل السلس بين القرآن والأذكار
+        function switchTab(tabName) {
+            document.getElementById('quran-section').classList.add('hidden');
+            document.getElementById('azkar-section').classList.add('hidden');
+            document.getElementById('tab-quran').classList.remove('active-tab');
+            document.getElementById('tab-azkar').classList.remove('active-tab');
+            
+            if(tabName === 'quran') {
+                document.getElementById('quran-section').classList.remove('hidden');
+                document.getElementById('tab-quran').classList.add('active-tab');
+                backToSurahsIndex();
+            } else {
+                document.getElementById('azkar-section').classList.remove('hidden');
+                document.getElementById('tab-azkar').classList.add('active-tab');
+                backToAzkarIndex();
+            }
         }
 
-        // دالة جلب المواد بناءً على الشعبة
-        async function loadSubjects(trackName) {
-            let report = ["📋 تقرير مصيدة أخطاء جلب المواد:"];
+        // 🎯 جلب الفهرس ومصيدة الأخطاء الشاملة
+        async function loadSurahsIndex() {
+            let report = ["📋 تقرير مصيدة أخطاء جلب فهرس السور:"];
             try {
-                var titleMap = { 'elmi_oloom': 'شعبة علمي علوم', 'elmi_riada': 'شعبة علمي رياضة', 'adabi': 'الشعبة الأدبية' };
-                document.getElementById('current-track-title').innerText = titleMap[trackName] || "المواد الدراسية";
+                const response = await fetch(`${SERVER_URL}/api/surahs`);
+                if(!response.ok) throw new Error("HTTP " + response.status);
+                const surahs = await response.json();
                 
-                const response = await fetch(`${SERVER_URL}/api/subjects?track=${trackName}`);
-                const subjects = await response.json();
-                
-                const container = document.getElementById('subjects-container');
+                const container = document.getElementById('surahs-container');
                 container.innerHTML = "";
                 
-                subjects.forEach(sub => {
+                surahs.forEach(s => {
                     const card = document.createElement('div');
-                    card.className = "subject-card";
-                    
-                    // 🎯 التعديل الخارق هنا: عند الضغط على المادة تذهب فوراً لجلب كتابها وفتحه مباشرة
-                    card.onclick = () => openBookDirectly(sub.id);
-                    
+                    card.className = "surah-item-card";
+                    card.onclick = () => loadSurahContent(s.id);
                     card.innerHTML = `
-                        <div class="subject-info">
-                            <i class="fas fa-book-bookmark"></i>
-                            <h3>${sub.name}</h3>
+                        <div class="surah-meta">
+                            <span class="surah-number">${s.id}</span>
+                            <div class="surah-name-box">
+                                <h3>سُورَةُ ${s.name}</h3>
+                                <p>${s.type} • آياتها ${s.verses_count}</p>
+                            </div>
                         </div>
-                        <span class="direct-open-text">فتح الكتاب <i class="fas fa-external-link-alt"></i></span>
+                        <i class="fas fa-chevron-left gold-arrow"></i>
                     `;
                     container.appendChild(card);
                 });
-                
-                showScreen('subjects-screen');
             } catch (err) {
-                report.push("💥 تعذر الاتصال بالسيرفر وجلب قائمة المواد");
-                report.push("📝 تفاصيل الخطأ: " + err.message);
+                report.push("💥 تعذر الاتصال بالسيرفر وجلب فهرس السور");
+                report.push("📝 تفاصيل الخطأ الفعلي: " + err.message);
                 alert(report.join("\n\n"));
             }
         }
 
-        // 🎯 دالة الفتح المباشر للكتاب في صفحة كاملة بدون نوافذ صغيرة
-        async function openBookDirectly(subjectId) {
-            let report = ["📋 تقرير مصيدة أخطاء فتح الكتاب المباشر:"];
+        // 🎯 الضغطة على السورة: جلب النص الكامل للآيات ومصيدة أخطائها الحقيقية
+        async function loadSurahContent(surahId) {
+            let report = ["📋 تقرير مصيدة أخطاء فتح نص السورة:"];
             try {
-                // نطلب من السيرفر الكتب المتاحة لهذه المادة
-                const response = await fetch(`${SERVER_URL}/api/books?subject_id=${subjectId}`);
-                const books = await response.json();
+                const response = await fetch(`${SERVER_URL}/api/surah/${surahId}`);
+                if(!response.ok) throw new Error("HTTP " + response.status);
+                const surah = await response.json();
                 
-                if (books.length === 0) {
-                    alert("جاري رفع وتجهيز كتاب هذه المادة حالياً على السيرفر!");
-                    return;
-                }
+                document.getElementById('current-surah-title').innerText = "سُورَةُ " + surah.name;
                 
-                // نأخذ رابط أول كتاب متاح للمادة (مثل المنهج أو الشرح الأساسي)
-                const targetPdfUrl = books[0].pdf_url;
+                const textContainer = document.getElementById('surah-text-content');
+                textContainer.innerText = surah.content;
                 
-                // نفتح الرابط فوراً وبشكل مباشر كامل لكي يتصفح الطالب ويبحث بحريته المطلقة وبحسب حجم الكتاب
-                window.location.href = targetPdfUrl;
-                
+                // إخفاء الفهرس وعرض شاشة الآيات كاملة
+                document.getElementById('surahs-index-view').classList.add('hidden');
+                document.getElementById('surah-reading-view').classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             } catch (err) {
-                report.push("💥 فشل السيرفر في تمرير رابط الكتاب المباشر");
-                report.push("📝 تفاصيل الخطأ: " + err.message);
+                report.push("💥 تعذر سحب نص الآيات من قاعدة بيانات السيرفر");
+                report.push("📝 تفاصيل الخطأ الفعلي: " + err.message);
                 alert(report.join("\n\n"));
             }
         }
-    </script>
-</body>
-</html>
+
+        function backToSurahsIndex() {
+            document.getElementById('surah-reading-view').classList.add('hidden');
+            document.getElementById('surahs-index-view').classList.remove('hidden');
+        }
+
+        // 🎯 جلب الأذكار ومصيدة أخطائها الشاملة
+        async function loadAzkarData(category, titleText) {
+            let report = ["📋 تقرير مصيدة أخطاء جلب الأذكار:"];
+            try {
+                document.getElementById('current-azkar-title').innerText = titleText;
+                
+                const response = await fetch(`${SERVER_URL}/api/azkar?category=${category}`);
+                if(!response.ok) throw new Error("HTTP " + response.status);
+                const azkar = await response.json();
+                
+                const container = document.getElementById('azkar-container');
+                container.innerHTML = "";
+                
+                azkar.forEach((az, index) => {
+                    const card = document.createElement('div');
+                    card.className = "zekr-box-card";
+                    card.innerHTML = `
+                        <p class="zekr-text">${az.text}</p>
+                        <div class="counter-area">
+                            <button id="counter-btn-${index}" onclick="decreaseCounter(${index}, ${az.count})" class="tasbeeh-btn">
