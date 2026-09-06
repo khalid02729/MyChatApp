@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>المصحف الشريف والأذكار</title>
+    <title>المصحف الإلكتروني الفخم والأذكار</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cloudflare.com">
     <script>
@@ -13,31 +13,48 @@
 <body>
     <div class="app-container">
         <header class="app-header">
-            <div class="logo-area"><i class="fas fa-quran animated-quran"></i><h1>المصحف الشريف والأذكار</h1></div>
-            <p class="subtitle">صدقة جارية - قراءة القرآن الكريم وأذكار الصباح والمساء</p>
+            <div class="logo-area"><i class="fas fa-quran animated-quran"></i><h1>المُصْحَفُ الشَّرِيفُ</h1></div>
+            <p class="subtitle">تصفح مرن بسحب الشاشة لليسار • أذكار كاملة بالعداد التفاعلي</p>
             <div class="main-tabs">
-                <button onclick="switchTab('quran')" id="tab-quran" class="tab-btn active-tab"><i class="fas fa-book-open"></i> سور القرآن</button>
-                <button onclick="switchTab('azkar')" id="tab-azkar" class="tab-btn"><i class="fas fa-pray"></i> الأذكار اليومية</button>
+                <button onclick="switchTab('quran')" id="tab-quran" class="tab-btn active-tab"><i class="fas fa-book-open"></i> فهرس السور</button>
+                <button onclick="switchTab('azkar')" id="tab-azkar" class="tab-btn"><i class="fas fa-pray"></i> الأذكار والتحصين</button>
             </div>
         </header>
 
+        <!-- قسم القرآن التفاعلي الحريري -->
         <div id="quran-section" class="tab-content">
             <div id="surahs-index-view">
-                <h3 class="section-title">فهرس السور المباركة:</h3>
-                <div class="surahs-grid" id="surahs-container"><div class="loading-text">جاري تحميل الفهرس...</div></div>
+                <h3 class="section-title">فهرس سور القرآن الكريم:</h3>
+                <div class="surahs-grid" id="surahs-container"></div>
             </div>
+            
+            <!-- شاشة عرض الصفحات الأصلية بسحب اللمس لليسار -->
             <div id="surah-reading-view" class="hidden">
-                <div class="navigation-bar"><button onclick="backToSurahsIndex()" class="back-btn"><i class="fas fa-arrow-right"></i> الفهرس</button><h3 id="current-surah-title" class="surah-header-title"></h3></div>
-                <div class="quran-card-reader"><p class="bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p><div id="surah-text-content" class="quran-verses-text"></div></div>
+                <div class="navigation-bar">
+                    <button onclick="backToSurahsIndex()" class="back-btn"><i class="fas fa-arrow-right"></i> الفهرس</button>
+                    <h3 id="current-surah-title" class="surah-header-title">سورة</h3>
+                    <span id="page-number-indicator" class="page-indicator-badge">صفحة 1</span>
+                </div>
+                
+                <!-- منطقة السحب الحركي باللمس لليسار واليمين سلسة جداً -->
+                <div class="quran-swiper-container" id="swiper-box">
+                    <div class="swiper-wrapper-page" id="quran-page-holder">
+                        <img id="quran-page-img" src="" alt="صفحة المصحف الشريف">
+                    </div>
+                    <!-- أزرار تنقل جانبية احتياطية للموبايل والويب -->
+                    <button onclick="nextPage()" class="nav-arrow-btn left-arrow"><i class="fas fa-chevron-left"></i></button>
+                    <button onclick="prevPage()" class="nav-arrow-btn right-arrow"><i class="fas fa-chevron-right"></i></button>
+                </div>
             </div>
         </div>
 
+        <!-- قسم الأذكار والمسبحة -->
         <div id="azkar-section" class="tab-content hidden">
             <div id="azkar-index-view">
-                <h3 class="section-title">أذكار الحفظ والتحصين اليومي:</h3>
+                <h3 class="section-title">أذكار الحفظ والتحصين اليومي المكتملة:</h3>
                 <div class="azkar-categories-grid">
-                    <div class="azkar-card category-sabah" onclick="loadAzkarData('sabah', 'أذكار الصباح ☀️')"><i class="fas fa-sun"></i><h3>أذكار الصباح</h3></div>
-                    <div class="azkar-card category-masaa" onclick="loadAzkarData('masaa', 'أذكار المساء 🌙')"><i class="fas fa-moon"></i><h3>أذكار المساء</h3></div>
+                    <div class="azkar-card category-sabah" onclick="loadAzkarData('sabah', 'أذكار الصباح كاملة ☀️')"><i class="fas fa-sun"></i><h3>أذكار الصباح كاملة</h3></div>
+                    <div class="azkar-card category-masaa" onclick="loadAzkarData('masaa', 'أذكار المساء كاملة 🌙')"><i class="fas fa-moon"></i><h3>أذكار المساء كاملة</h3></div>
                 </div>
             </div>
             <div id="azkar-list-view" class="hidden">
@@ -49,7 +66,10 @@
 
     <script>
         const SERVER_URL = window.location.protocol + "//" + window.location.host;
-        window.onload = function() { loadSurahsIndex(); };
+        let startPageNum = 1, endPageNum = 1, currentPageNum = 1;
+        let touchStartX = 0, touchEndX = 0;
+
+        window.onload = function() { loadSurahsIndex(); initSwipeDetection(); };
 
         function switchTab(t) {
             document.getElementById('quran-section').classList.add('hidden'); document.getElementById('azkar-section').classList.add('hidden');
@@ -62,18 +82,63 @@
             try {
                 const r = await fetch(`${SERVER_URL}/api/surahs`), s = await r.json(), container = document.getElementById('surahs-container'); container.innerHTML = "";
                 s.forEach(surah => {
-                    const card = document.createElement('div'); card.className = "surah-item-card"; card.onclick = () => loadSurahContent(surah.id);
-                    card.innerHTML = `<div class="surah-meta"><span class="surah-number">${surah.id}</span><div class="surah-name-box"><h3>سُورَةُ ${surah.name}</h3><p>${surah.type} • آياتها ${surah.verses_count}</p></div></div><i class="fas fa-chevron-left gold-arrow"></i>`; container.appendChild(card);
+                    const card = document.createElement('div'); card.className = "surah-item-card"; 
+                    card.onclick = () => startReadingSurah(surah.name, surval = surah.start_page, surah.end_page);
+                    card.innerHTML = `<div class="surah-meta"><span class="surah-number">${surah.id}</span><div class="surah-name-box"><h3>سُورَةُ ${surah.name}</h3><p>${surah.type} • تبدأ من صفحة ${surah.start_page}</p></div></div><i class="fas fa-chevron-left gold-arrow"></i>`; container.appendChild(card);
                 });
             } catch (e) { alert("خطأ بالفهرس"); }
         }
 
-        async function loadSurahContent(id) {
-            try {
-                const r = await fetch(`${SERVER_URL}/api/surah/${id}`), s = await r.json();
-                document.getElementById('current-surah-title').innerText = "سُورَةُ " + s.name; document.getElementById('surah-text-content').innerText = s.content;
-                document.getElementById('surahs-index-view').classList.add('hidden'); document.getElementById('surah-reading-view').classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' });
-            } catch (e) { alert("خطأ بالآيات"); }
+        function startReadingSurah(name, start, end) {
+            startPageNum = start; endPageNum = end; currentPageNum = start;
+            document.getElementById('current-surah-title').innerText = "سُورَةُ " + name;
+            renderQuranPage();
+            document.getElementById('surahs-index-view').classList.add('hidden'); document.getElementById('surah-reading-view').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // دالة عرض الصفحة المصورة الفخمة مع تفعيل ميزة التحميل المسبق فائقة السلاسة
+        function renderQuranPage() {
+            // نقوم بجلب الصفحة المصورة الرسمية للمصحف الشريف بجودة عالية جداً وثابتة طيران
+            // نستخدم السيرفر العالمي المفتوح لصفحات المصحف لضمان النقاء المطلق والسرعة
+            let paddedPage = String(currentPageNum).padStart(3, '0');
+            const imgElement = document.getElementById('quran-page-img');
+            imgElement.src = `https://amazonaws.com{paddedPage}.png`;
+            document.getElementById('page-number-indicator').innerText = "صفحة " + currentPageNum;
+            
+            // تحميل مسبق خفي (Preloading) للصفحة التالية لكي تقلب لليسار كالحرير بدون ثانية واحدة انتظار!
+            if(currentPageNum < endPageNum) {
+                let nextPadded = String(currentPageNum + 1).padStart(3, '0');
+                const imgPreload = new Image();
+                imgPreload.src = `https://amazonaws.com{nextPadded}.png`;
+            }
+        }
+
+        function nextPage() { if(currentPageNum < endPageNum) { currentPageNum++; renderQuranPage(); triggerFlipAnimation(); } }
+        function prevPage() { if(currentPageNum > startPageNum) { currentPageNum--; renderQuranPage(); triggerFlipAnimation(); } }
+
+        // أنيميشن ناعم جداً وسلس كالحرير عند انزلاق الصفحات
+        function triggerFlipAnimation() {
+            const holder = document.getElementById('quran-page-holder');
+            holder.style.opacity = "0.4"; holder.style.transform = "translateX(-15px)";
+            setTimeout(() => { holder.style.opacity = "1"; holder.style.transform = "translateX(0)"; }, 120);
+        }
+
+        // 🎯 برمجة نظام الاستشعار باللمس والسحب لليسار فائق السلاسة (Fluid Touch Swipe)
+        function initSwipeDetection() {
+            const box = document.getElementById('swiper-box');
+            box.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+            box.addEventListener('touchend', e => { 
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipeGesture();
+            }, {passive: true});
+        }
+
+        function handleSwipeGesture() {
+            // سحب لليسار (تعني الصفحة التالية في المصاحف)
+            if (touchStartX - touchEndX > 50) nextPage();
+            // سحب لليمين (تعني الصفحة السابقة)
+            if (touchEndX - touchStartX > 50) prevPage();
         }
 
         function backToSurahsIndex() { document.getElementById('surah-reading-view').classList.add('hidden'); document.getElementById('surahs-index-view').classList.remove('hidden'); }
@@ -91,11 +156,4 @@
         }
 
         function decreaseCounter(i) {
-            const num = document.getElementById(`count-val-${i}`), btn = document.getElementById(`counter-btn-${i}`); let val = parseInt(num.innerText);
-            if (val > 0) { val--; num.innerText = val; btn.style.transform = "scale(0.9)"; setTimeout(() => btn.style.transform = "scale(1)", 80); if (val === 0) { btn.classList.add('completed-counter'); num.innerText = "✓"; } }
-        }
 
-        function backToAzkarIndex() { document.getElementById('azkar-list-view').classList.add('hidden'); document.getElementById('azkar-index-view').classList.remove('hidden'); }
-    </script>
-</body>
-</html>
