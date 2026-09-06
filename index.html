@@ -2,26 +2,18 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#061a13">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>المصحف الشريف والأذكار</title>
 
     <link rel="stylesheet" href="style.css">
 
+    <!-- مصيدة الأخطاء — سيبناها زي ما طلبت -->
     <script>
-        window.onerror = function (message, source, line, column) {
-            alert(
-                "🚨 مصيدة الأخطاء\n\n" +
-                message +
-                "\n\nالسطر: " + line +
-                "\nالعمود: " + column
-            );
+        window.onerror = function (m, u, l) {
+            alert("🚨 مصيدة الأخطاء:\n" + m + "\nفي السطر: " + l);
             return false;
         };
-
-        window.addEventListener("unhandledrejection", function (event) {
-            alert("🚨 خطأ غير متوقع:\n" + event.reason);
-        });
     </script>
 </head>
 
@@ -29,397 +21,627 @@
 
 <div class="app-container">
 
+    <!-- ================= HEADER ================= -->
+
     <header class="app-header">
+
         <div class="logo-area">
-            <div class="quran-logo">﷽</div>
-            <div>
-                <h1>المُصْحَفُ الشَّرِيفُ</h1>
-                <p class="subtitle">القرآن الكريم والأذكار اليومية</p>
-            </div>
+            <span class="quran-logo">📖</span>
+            <h1>المُصْحَفُ الشَّرِيفُ</h1>
         </div>
+
+        <p class="subtitle">
+            القرآن الكريم والأذكار اليومية
+        </p>
 
         <div class="main-tabs">
-            <button id="tab-quran" class="tab-btn active-tab" onclick="switchTab('quran')">
-                📖 القرآن
+            <button
+                onclick="switchTab('quran')"
+                id="tab-quran"
+                class="tab-btn active-tab">
+                القرآن الكريم
             </button>
 
-            <button id="tab-azkar" class="tab-btn" onclick="switchTab('azkar')">
-                📿 الأذكار
+            <button
+                onclick="switchTab('azkar')"
+                id="tab-azkar"
+                class="tab-btn">
+                الأذكار
             </button>
         </div>
+
     </header>
 
 
-    <!-- ================= القرآن ================= -->
+    <!-- ================= QURAN ================= -->
 
-    <section id="quran-section" class="tab-content">
+    <div id="quran-section" class="tab-content">
+
+        <!-- الفهرس -->
 
         <div id="surahs-index-view">
 
-            <div class="top-title-row">
-                <div>
-                    <h2>فهرس القرآن الكريم</h2>
-                    <p id="surah-count-text">جاري تحميل السور...</p>
-                </div>
-            </div>
+            <h3 class="section-title">
+                فهرس سور القرآن الكريم
+            </h3>
 
             <div class="search-box">
-                <span>🔎</span>
                 <input
                     id="surah-search"
-                    type="search"
-                    placeholder="ابحث باسم السورة أو رقمها..."
-                    autocomplete="off"
-                    oninput="filterSurahs()"
-                >
+                    type="text"
+                    placeholder="🔎 ابحث عن سورة..."
+                    oninput="searchSurahs()">
             </div>
 
-            <div id="last-read-box" class="last-read hidden">
-                <div>
-                    <small>آخر قراءة</small>
-                    <strong id="last-read-title"></strong>
-                </div>
-
-                <button onclick="continueLastRead()">
-                    متابعة
-                </button>
-            </div>
-
-            <div id="surahs-container" class="surahs-grid"></div>
-
-            <div id="surahs-empty" class="empty-state hidden">
-                لا توجد نتائج للبحث.
+            <div
+                class="surahs-grid"
+                id="surahs-container">
             </div>
 
         </div>
 
 
-        <!-- شاشة السورة -->
+        <!-- شاشة المصحف -->
 
         <div id="surah-reading-view" class="hidden">
 
             <div class="navigation-bar">
 
-                <button class="back-btn" onclick="backToSurahsIndex()">
+                <button
+                    onclick="backToSurahsIndex()"
+                    class="back-btn">
                     ← الفهرس
                 </button>
 
-                <div class="surah-title-area">
-                    <strong id="current-surah-title"></strong>
-                    <small id="current-surah-info"></small>
-                </div>
+                <h3
+                    id="current-surah-title"
+                    class="surah-header-title">
+                </h3>
 
-                <button class="small-action" onclick="toggleCurrentFavorite()">
-                    ☆
+                <button
+                    onclick="goToBookmark()"
+                    class="bookmark-top-btn">
+                    🔖
                 </button>
 
             </div>
 
 
-            <div class="reader-actions">
+            <!-- رقم الصفحة -->
 
-                <button onclick="changeFontSize(-1)">A−</button>
-                <button onclick="resetFontSize()">A</button>
-                <button onclick="changeFontSize(1)">A+</button>
+            <div class="page-info">
+                <span id="page-number">
+                    صفحة 1 / 1
+                </span>
+            </div>
+
+
+            <!-- المصحف -->
+
+            <div
+                id="quran-book"
+                class="quran-book">
+
+                <div
+                    id="pages-container"
+                    class="pages-container">
+                </div>
 
             </div>
 
 
-            <article id="verses-text-box" class="quran-card-reader">
-                <div class="loading-text">جاري تحميل الآيات...</div>
-            </article>
+            <!-- أسهم التنقل -->
+
+            <div class="page-controls">
+
+                <button
+                    onclick="previousPage()"
+                    class="page-btn">
+                    ❯
+                </button>
+
+                <button
+                    onclick="nextPage()"
+                    class="page-btn">
+                    ❮
+                </button>
+
+            </div>
+
+
+            <div class="swipe-hint">
+                اسحب يمينًا أو يسارًا للتنقل بين الصفحات
+            </div>
 
         </div>
 
-    </section>
+    </div>
 
 
-    <!-- ================= الأذكار ================= -->
+    <!-- ================= AZKAR ================= -->
 
-    <section id="azkar-section" class="tab-content hidden">
+    <div id="azkar-section" class="tab-content hidden">
 
         <div id="azkar-index-view">
 
-            <h2 class="section-title">الأذكار اليومية</h2>
+            <h3 class="section-title">
+                الأذكار اليومية
+            </h3>
 
             <div class="azkar-categories-grid">
 
-                <button
+                <div
                     class="azkar-card category-sabah"
-                    onclick="loadAzkarData('sabah', 'أذكار الصباح')"
-                >
-                    <div class="azkar-icon">☀️</div>
-                    <h3>أذكار الصباح</h3>
-                    <p>ابدأ يومك بذكر الله</p>
-                </button>
+                    onclick="loadAzkarData('sabah','أذكار الصباح ☀️')">
 
-                <button
+                    <div class="azkar-icon">☀️</div>
+
+                    <h3>
+                        أذكار الصباح
+                    </h3>
+
+                    <p>
+                        الأذكار كاملة
+                    </p>
+
+                </div>
+
+
+                <div
                     class="azkar-card category-masaa"
-                    onclick="loadAzkarData('masaa', 'أذكار المساء')"
-                >
+                    onclick="loadAzkarData('masaa','أذكار المساء 🌙')">
+
                     <div class="azkar-icon">🌙</div>
-                    <h3>أذكار المساء</h3>
-                    <p>اختم يومك بذكر الله</p>
-                </button>
+
+                    <h3>
+                        أذكار المساء
+                    </h3>
+
+                    <p>
+                        الأذكار كاملة
+                    </p>
+
+                </div>
 
             </div>
 
         </div>
 
 
-        <div id="azkar-list-view" class="hidden">
+        <div
+            id="azkar-list-view"
+            class="hidden">
 
             <div class="navigation-bar">
 
-                <button class="back-btn" onclick="backToAzkarIndex()">
+                <button
+                    onclick="backToAzkarIndex()"
+                    class="back-btn">
                     ← الأقسام
                 </button>
 
-                <strong id="current-azkar-title"></strong>
+                <h3
+                    id="current-azkar-title"
+                    class="surah-header-title">
+                </h3>
 
             </div>
 
-            <div id="azkar-container" class="azkar-list-container"></div>
+            <div
+                class="azkar-list-container"
+                id="azkar-container">
+            </div>
 
         </div>
 
-    </section>
+    </div>
 
 </div>
 
 
 <script>
 
-const SERVER_URL = window.location.origin;
+const SERVER_URL =
+    window.location.protocol +
+    "//" +
+    window.location.host;
+
+
+/* =========================================
+   متغيرات المصحف
+========================================= */
+
+let currentSurah = null;
+let currentSurahId = null;
+
+let currentPage = 0;
+let pages = [];
 
 let allSurahs = [];
-let currentSurahId = null;
-let currentSurahName = "";
-let currentFontSize = 25;
 
 
-/* ================= أدوات عامة ================= */
+/* =========================================
+   بداية البرنامج
+========================================= */
 
-async function api(url, options = {}) {
-
-    const response = await fetch(SERVER_URL + url, options);
-
-    let data = null;
-
-    try {
-        data = await response.json();
-    } catch {
-        throw new Error("السيرفر أرسل استجابة غير صالحة");
-    }
-
-    if (!response.ok) {
-        throw new Error(data.error || "حدث خطأ في السيرفر");
-    }
-
-    return data;
-}
+window.onload = function () {
+    loadSurahsIndex();
+};
 
 
-/* ================= بداية التطبيق ================= */
-
-window.addEventListener("load", async function () {
-
-    try {
-
-        await loadSurahsIndex();
-        showLastRead();
-
-    } catch (error) {
-
-        console.error(error);
-
-        document.getElementById("surahs-container").innerHTML =
-            `<div class="error-box">
-                ❌ تعذر تحميل القرآن.<br>
-                ${escapeHtml(error.message)}
-            </div>`;
-
-    }
-
-});
-
-
-/* ================= التبويبات ================= */
+/* =========================================
+   التبويبات
+========================================= */
 
 function switchTab(tab) {
 
-    const quran = document.getElementById("quran-section");
-    const azkar = document.getElementById("azkar-section");
+    document
+        .getElementById("quran-section")
+        .classList.add("hidden");
 
-    const quranButton = document.getElementById("tab-quran");
-    const azkarButton = document.getElementById("tab-azkar");
+    document
+        .getElementById("azkar-section")
+        .classList.add("hidden");
 
-    quran.classList.add("hidden");
-    azkar.classList.add("hidden");
+    document
+        .getElementById("tab-quran")
+        .classList.remove("active-tab");
 
-    quranButton.classList.remove("active-tab");
-    azkarButton.classList.remove("active-tab");
+    document
+        .getElementById("tab-azkar")
+        .classList.remove("active-tab");
+
 
     if (tab === "quran") {
 
-        quran.classList.remove("hidden");
-        quranButton.classList.add("active-tab");
+        document
+            .getElementById("quran-section")
+            .classList.remove("hidden");
+
+        document
+            .getElementById("tab-quran")
+            .classList.add("active-tab");
+
+        backToSurahsIndex();
 
     } else {
 
-        azkar.classList.remove("hidden");
-        azkarButton.classList.add("active-tab");
+        document
+            .getElementById("azkar-section")
+            .classList.remove("hidden");
 
+        document
+            .getElementById("tab-azkar")
+            .classList.add("active-tab");
+
+        backToAzkarIndex();
     }
-
 }
 
 
-/* ================= فهرس السور ================= */
+/* =========================================
+   تحميل فهرس السور
+========================================= */
 
 async function loadSurahsIndex() {
 
-    const container = document.getElementById("surahs-container");
+    const container =
+        document.getElementById("surahs-container");
 
     container.innerHTML =
-        `<div class="loading-text">جاري تحميل سور القرآن الكريم...</div>`;
+        `<div class="loading-text">جاري تحميل السور...</div>`;
 
-    const data = await api("/api/surahs");
+    try {
 
-    allSurahs = data;
+        const response =
+            await fetch(`${SERVER_URL}/api/surahs`);
 
-    document.getElementById("surah-count-text").innerText =
-        `${data.length} سورة`;
+        if (!response.ok)
+            throw new Error("تعذر تحميل السور");
 
-    renderSurahs(data);
+        allSurahs =
+            await response.json();
+
+        renderSurahs(allSurahs);
+
+    } catch (error) {
+
+        container.innerHTML =
+            `<div class="error-box">
+                ❌ حدث خطأ أثناء تحميل فهرس السور
+            </div>`;
+
+        throw error;
+    }
 }
 
 
-function renderSurahs(list) {
+/* =========================================
+   عرض السور
+========================================= */
 
-    const container = document.getElementById("surahs-container");
+function renderSurahs(surahs) {
+
+    const container =
+        document.getElementById("surahs-container");
 
     container.innerHTML = "";
 
-    if (!list.length) {
+    if (!surahs.length) {
 
-        document.getElementById("surahs-empty").classList.remove("hidden");
+        container.innerHTML =
+            `<div class="error-box">
+                لا توجد نتائج
+            </div>`;
 
         return;
     }
 
-    document.getElementById("surahs-empty").classList.add("hidden");
 
+    surahs.forEach(surah => {
 
-    list.forEach(surah => {
+        const card =
+            document.createElement("div");
 
-        const card = document.createElement("button");
+        card.className =
+            "surah-item-card";
 
-        card.className = "surah-item-card";
 
         card.onclick = function () {
+
             loadSurahVerses(surah.id);
+
         };
 
 
         card.innerHTML = `
-            <div class="surah-number">
-                ${surah.id}
-            </div>
 
-            <div class="surah-main-info">
+            <div class="surah-meta">
 
-                <h3>سُورَةُ ${escapeHtml(surah.name)}</h3>
+                <div class="surah-number">
+                    ${surah.id}
+                </div>
 
-                <div class="surah-details">
-                    <span>${escapeHtml(surah.type)}</span>
-                    <span>•</span>
-                    <span>${surah.number_of_ayahs} آية</span>
+                <div class="surah-name-box">
+
+                    <h3>
+                        سُورَةُ ${surah.name}
+                    </h3>
+
+                    <p>
+                        ${surah.type}
+                    </p>
+
                 </div>
 
             </div>
 
-            <div class="surah-arrow">
-                ←
-            </div>
+            <span class="gold-arrow">
+                ❮
+            </span>
         `;
+
 
         container.appendChild(card);
 
     });
-
 }
 
 
-function filterSurahs() {
+/* =========================================
+   البحث عن السور
+========================================= */
 
-    const value =
-        document.getElementById("surah-search")
+function searchSurahs() {
+
+    const input =
+        document
+        .getElementById("surah-search")
         .value
         .trim()
         .toLowerCase();
 
-    if (!value) {
 
-        renderSurahs(allSurahs);
-        return;
-    }
+    const result =
+        allSurahs.filter(surah => {
 
-    const filtered = allSurahs.filter(surah => {
+            return (
+                surah.name
+                .toLowerCase()
+                .includes(input)
+                ||
+                String(surah.id)
+                .includes(input)
+            );
 
-        return (
-            surah.name.toLowerCase().includes(value) ||
-            String(surah.id) === value
-        );
+        });
 
-    });
 
-    renderSurahs(filtered);
+    renderSurahs(result);
 }
 
 
-/* ================= قراءة السورة ================= */
+/* =========================================
+   فتح السورة
+========================================= */
 
 async function loadSurahVerses(surahId) {
 
-    currentSurahId = surahId;
-
-    const box = document.getElementById("verses-text-box");
-
-    box.innerHTML =
-        `<div class="loading-text">جاري تحميل السورة...</div>`;
-
-    document.getElementById("surahs-index-view")
-        .classList.add("hidden");
-
-    document.getElementById("surah-reading-view")
-        .classList.remove("hidden");
-
-    window.scrollTo(0, 0);
-
-
     try {
 
+        const response =
+            await fetch(
+                `${SERVER_URL}/api/surah/${surahId}`
+            );
+
+
+        if (!response.ok)
+            throw new Error("تعذر تحميل السورة");
+
+
         const data =
-            await api(`/api/surah/${surahId}`);
+            await response.json();
 
 
-        currentSurahName = data.name;
+        currentSurah =
+            data;
+
+        currentSurahId =
+            surahId;
 
 
-        document.getElementById("current-surah-title")
-            .innerText = "سُورَةُ " + data.name;
-
-
-        document.getElementById("current-surah-info")
+        document
+            .getElementById("current-surah-title")
             .innerText =
-            `${data.type} • ${data.verses.length} آية`;
+            "سُورَةُ " + data.name;
+
+
+        document
+            .getElementById("surahs-index-view")
+            .classList.add("hidden");
+
+
+        document
+            .getElementById("surah-reading-view")
+            .classList.remove("hidden");
+
+
+        createPages(data.verses);
+
+
+        const savedBookmark =
+            getBookmark(surahId);
+
+
+        if (savedBookmark) {
+
+            const verseIndex =
+                data.verses.findIndex(
+                    v =>
+                    Number(v.verse_number) ===
+                    Number(savedBookmark)
+                );
+
+
+            if (verseIndex >= 0) {
+
+                currentPage =
+                    findPageByVerse(verseIndex);
+
+            } else {
+
+                currentPage = 0;
+
+            }
+
+        } else {
+
+            currentPage = 0;
+
+        }
+
+
+        showPage(currentPage);
+
+        window.scrollTo(0, 0);
+
+    } catch (error) {
+
+        alert(
+            "❌ حدث خطأ أثناء تحميل السورة"
+        );
+
+        throw error;
+    }
+}
+
+
+/* =========================================
+   إنشاء صفحات المصحف
+========================================= */
+
+function createPages(verses) {
+
+    pages = [];
+
+    /*
+      كل صفحة تحتوي عددًا مناسبًا من الآيات.
+      هذا تقسيم داخل التطبيق وليس ادعاءً
+      بأنه مطابق لترقيم صفحات المصحف الورقي.
+    */
+
+    const versesPerPage = 8;
+
+
+    let page = [];
+
+
+    verses.forEach((verse, index) => {
+
+        page.push({
+            ...verse,
+            originalIndex: index
+        });
+
+
+        if (
+            page.length >= versesPerPage ||
+            index === verses.length - 1
+        ) {
+
+            pages.push(page);
+
+            page = [];
+
+        }
+
+    });
+
+
+    renderPages();
+
+}
+
+
+/* =========================================
+   إنشاء HTML للصفحات
+========================================= */
+
+function renderPages() {
+
+    const container =
+        document.getElementById("pages-container");
+
+
+    container.innerHTML = "";
+
+
+    pages.forEach((page, pageIndex) => {
+
+        const pageElement =
+            document.createElement("div");
+
+
+        pageElement.className =
+            "quran-page";
+
+
+        pageElement.dataset.page =
+            pageIndex;
 
 
         let html = "";
 
 
-        if (surahId !== 9) {
+        /*
+          البسملة
+        */
+
+        if (
+            pageIndex === 0 &&
+            currentSurahId !== 1 &&
+            currentSurahId !== 9
+        ) {
 
             html += `
                 <div class="bismillah">
@@ -430,249 +652,539 @@ async function loadSurahVerses(surahId) {
         }
 
 
-        html += `<div class="quran-text">`;
+        page.forEach(verse => {
+
+            const bookmark =
+                getBookmark(currentSurahId);
 
 
-        data.verses.forEach(verse => {
+            const isBookmarked =
+                Number(bookmark) ===
+                Number(verse.verse_number);
+
 
             html += `
+
                 <span
-                    class="single-verse"
-                    id="verse-${verse.verse_number}"
-                    onclick="saveLastRead(${surahId}, '${escapeAttribute(data.name)}', ${verse.verse_number})"
-                >
+                    class="single-verse
+                    ${isBookmarked ? "bookmarked-verse" : ""}"
+                    data-verse="${verse.verse_number}"
+                    onclick="setBookmark(${verse.verse_number})">
 
-                    ${escapeHtml(verse.text)}
+                    ${verse.text}
 
-                    <span class="verse-number">
-                        ${toArabicNumber(verse.verse_number)}
+                    <span class="verse-num-badge">
+                        ﴿${verse.verse_number}﴾
                     </span>
 
+                    ${
+                        isBookmarked
+                        ?
+                        `<span class="bookmark-marker">🔖</span>`
+                        :
+                        ""
+                    }
+
                 </span>
+
             `;
 
         });
 
 
-        html += `</div>`;
-
-
-        box.innerHTML = html;
-
-        applyFontSize();
-
-        saveLastRead(surahId, data.name, 1);
-
-    } catch (error) {
-
-        box.innerHTML =
-            `<div class="error-box">
-                ❌ ${escapeHtml(error.message)}
+        pageElement.innerHTML =
+            `<div class="quran-text">
+                ${html}
             </div>`;
+
+
+        container.appendChild(pageElement);
+
+    });
+
+}
+
+
+/* =========================================
+   عرض صفحة
+========================================= */
+
+function showPage(index) {
+
+    if (!pages.length)
+        return;
+
+
+    if (index < 0)
+        index = 0;
+
+
+    if (index >= pages.length)
+        index = pages.length - 1;
+
+
+    currentPage =
+        index;
+
+
+    const pageElements =
+        document.querySelectorAll(".quran-page");
+
+
+    pageElements.forEach((page, i) => {
+
+        page.classList.toggle(
+            "active-page",
+            i === currentPage
+        );
+
+    });
+
+
+    document
+        .getElementById("page-number")
+        .innerText =
+        `صفحة ${currentPage + 1} / ${pages.length}`;
+
+
+    /*
+      إعادة رسم الآية الحالية
+      لإظهار علامة الوقف
+    */
+
+    updateBookmarkVisual();
+
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+
+/* =========================================
+   الصفحة التالية
+========================================= */
+
+function nextPage() {
+
+    if (
+        currentPage <
+        pages.length - 1
+    ) {
+
+        showPage(
+            currentPage + 1
+        );
 
     }
 
 }
 
 
-function backToSurahsIndex() {
+/* =========================================
+   الصفحة السابقة
+========================================= */
 
-    document.getElementById("surah-reading-view")
-        .classList.add("hidden");
+function previousPage() {
 
-    document.getElementById("surahs-index-view")
-        .classList.remove("hidden");
+    if (currentPage > 0) {
 
-}
+        showPage(
+            currentPage - 1
+        );
 
-
-/* ================= حجم الخط ================= */
-
-function changeFontSize(value) {
-
-    currentFontSize += value;
-
-    if (currentFontSize < 19)
-        currentFontSize = 19;
-
-    if (currentFontSize > 34)
-        currentFontSize = 34;
-
-    applyFontSize();
-}
-
-
-function resetFontSize() {
-
-    currentFontSize = 25;
-
-    applyFontSize();
-}
-
-
-function applyFontSize() {
-
-    document.documentElement.style
-        .setProperty("--quran-font-size", currentFontSize + "px");
+    }
 
 }
 
 
-/* ================= آخر قراءة ================= */
+/* =========================================
+   البحث عن صفحة الآية
+========================================= */
 
-function saveLastRead(surahId, name, verse) {
+function findPageByVerse(index) {
 
-    localStorage.setItem(
-        "quran_last_read",
-        JSON.stringify({
-            surahId,
-            name,
-            verse
-        })
-    );
+    for (
+        let i = 0;
+        i < pages.length;
+        i++
+    ) {
 
-    showLastRead();
+        if (
+            pages[i].some(
+                v =>
+                v.originalIndex === index
+            )
+        ) {
+
+            return i;
+
+        }
+
+    }
+
+    return 0;
 }
 
 
-function showLastRead() {
+/* =========================================
+   السحب باللمس
+========================================= */
 
-    const saved =
-        localStorage.getItem("quran_last_read");
-
-    if (!saved) return;
-
-    try {
-
-        const data = JSON.parse(saved);
-
-        document.getElementById("last-read-title")
-            .innerText =
-            `سورة ${data.name} — الآية ${data.verse}`;
-
-        document.getElementById("last-read-box")
-            .classList.remove("hidden");
-
-    } catch {}
-
-}
+let touchStartX = 0;
+let touchStartY = 0;
 
 
-function continueLastRead() {
-
-    const saved =
-        localStorage.getItem("quran_last_read");
-
-    if (!saved) return;
-
-    const data = JSON.parse(saved);
-
-    loadSurahVerses(data.surahId);
-
-}
+const book =
+    document.getElementById("quran-book");
 
 
-/* ================= المفضلة ================= */
+book.addEventListener(
+    "touchstart",
+    function (event) {
 
-function toggleCurrentFavorite() {
+        touchStartX =
+            event.touches[0].clientX;
 
-    if (!currentSurahId) return;
+        touchStartY =
+            event.touches[0].clientY;
 
-    let favorites =
-        JSON.parse(localStorage.getItem("quran_favorites") || "[]");
+    },
+    { passive: true }
+);
 
-    if (favorites.includes(currentSurahId)) {
 
-        favorites =
-            favorites.filter(id => id !== currentSurahId);
+book.addEventListener(
+    "touchend",
+    function (event) {
+
+        const endX =
+            event.changedTouches[0].clientX;
+
+        const endY =
+            event.changedTouches[0].clientY;
+
+
+        const diffX =
+            endX - touchStartX;
+
+        const diffY =
+            endY - touchStartY;
+
+
+        /*
+          نتأكد أن الحركة أفقية
+        */
+
+        if (
+            Math.abs(diffX) >
+            Math.abs(diffY) &&
+            Math.abs(diffX) > 50
+        ) {
+
+            if (diffX < 0) {
+
+                /*
+                  سحب لليسار
+                  الصفحة التالية
+                */
+
+                nextPage();
+
+            } else {
+
+                /*
+                  سحب لليمين
+                  الصفحة السابقة
+                */
+
+                previousPage();
+
+            }
+
+        }
+
+    },
+    { passive: true }
+);
+
+
+/* =========================================
+   علامة "وقفت هنا"
+========================================= */
+
+function setBookmark(verseNumber) {
+
+    const oldBookmark =
+        getBookmark(currentSurahId);
+
+
+    /*
+      لو ضغط على نفس الآية مرة ثانية
+      نشيل العلامة
+    */
+
+    if (
+        Number(oldBookmark) ===
+        Number(verseNumber)
+    ) {
+
+        localStorage.removeItem(
+            "quran_bookmark_" +
+            currentSurahId
+        );
 
     } else {
 
-        favorites.push(currentSurahId);
+        localStorage.setItem(
+            "quran_bookmark_" +
+            currentSurahId,
+            verseNumber
+        );
 
     }
 
-    localStorage.setItem(
-        "quran_favorites",
-        JSON.stringify(favorites)
+
+    updateBookmarkVisual();
+
+}
+
+
+/* =========================================
+   جلب العلامة
+========================================= */
+
+function getBookmark(surahId) {
+
+    return localStorage.getItem(
+        "quran_bookmark_" +
+        surahId
     );
 
-    updateFavoriteButton();
+}
+
+
+/* =========================================
+   تحديث شكل العلامة
+========================================= */
+
+function updateBookmarkVisual() {
+
+    const bookmark =
+        getBookmark(currentSurahId);
+
+
+    document
+        .querySelectorAll(".single-verse")
+        .forEach(verse => {
+
+            const number =
+                verse.dataset.verse;
+
+
+            const oldMarker =
+                verse.querySelector(
+                    ".bookmark-marker"
+                );
+
+
+            verse.classList.remove(
+                "bookmarked-verse"
+            );
+
+
+            if (oldMarker)
+                oldMarker.remove();
+
+
+            if (
+                bookmark &&
+                Number(bookmark) ===
+                Number(number)
+            ) {
+
+                verse.classList.add(
+                    "bookmarked-verse"
+                );
+
+
+                const marker =
+                    document.createElement(
+                        "span"
+                    );
+
+
+                marker.className =
+                    "bookmark-marker";
+
+
+                marker.innerText =
+                    "🔖";
+
+
+                verse.appendChild(
+                    marker
+                );
+
+            }
+
+        });
 
 }
 
 
-function updateFavoriteButton() {
+/* =========================================
+   الذهاب لمكان الوقوف
+========================================= */
 
-    const button =
-        document.querySelector(".small-action");
+function goToBookmark() {
 
-    const favorites =
-        JSON.parse(localStorage.getItem("quran_favorites") || "[]");
+    const bookmark =
+        getBookmark(currentSurahId);
 
-    button.innerText =
-        favorites.includes(currentSurahId) ? "★" : "☆";
+
+    if (!bookmark) {
+
+        alert(
+            "🔖 لم تحدد مكانًا للتوقف في هذه السورة."
+        );
+
+        return;
+
+    }
+
+
+    const verseIndex =
+        currentSurah.verses.findIndex(
+            v =>
+            Number(v.verse_number) ===
+            Number(bookmark)
+        );
+
+
+    if (verseIndex < 0)
+        return;
+
+
+    const page =
+        findPageByVerse(
+            verseIndex
+        );
+
+
+    showPage(page);
+
+
+    setTimeout(() => {
+
+        const verse =
+            document.querySelector(
+                `.single-verse[data-verse="${bookmark}"]`
+            );
+
+
+        if (verse) {
+
+            verse.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+        }
+
+    }, 200);
 
 }
 
 
-/* ================= الأذكار ================= */
+/* =========================================
+   الرجوع للفهرس
+========================================= */
 
-async function loadAzkarData(category, title) {
+function backToSurahsIndex() {
 
-    document.getElementById("azkar-index-view")
+    document
+        .getElementById("surah-reading-view")
         .classList.add("hidden");
 
-    document.getElementById("azkar-list-view")
+
+    document
+        .getElementById("surahs-index-view")
         .classList.remove("hidden");
 
-    document.getElementById("current-azkar-title")
-        .innerText = title;
+}
 
-    const container =
-        document.getElementById("azkar-container");
 
-    container.innerHTML =
-        `<div class="loading-text">جاري تحميل الأذكار...</div>`;
+/* =========================================
+   الأذكار
+========================================= */
 
+async function loadAzkarData(
+    category,
+    title
+) {
 
     try {
 
-        const data =
-            await api(`/api/azkar?category=${category}`);
+        document
+            .getElementById(
+                "current-azkar-title"
+            )
+            .innerText = title;
+
+
+        const response =
+            await fetch(
+                `${SERVER_URL}/api/azkar?category=${category}`
+            );
+
+
+        if (!response.ok)
+            throw new Error(
+                "تعذر تحميل الأذكار"
+            );
+
+
+        const azkar =
+            await response.json();
+
+
+        const container =
+            document.getElementById(
+                "azkar-container"
+            );
+
 
         container.innerHTML = "";
 
 
-        data.forEach((zekr, index) => {
+        azkar.forEach((zekr, index) => {
 
             const card =
                 document.createElement("div");
 
-            card.className = "zekr-box-card";
+
+            card.className =
+                "zekr-box-card";
+
 
             card.innerHTML = `
 
-                <div class="zekr-number">
-                    ${index + 1}
-                </div>
-
                 <p class="zekr-text">
-                    ${escapeHtml(zekr.text)}
+                    ${zekr.text}
                 </p>
 
                 <div class="counter-area">
 
                     <button
-                        class="tasbeeh-btn"
                         id="counter-btn-${index}"
-                        onclick="cnt(${index}, ${zekr.count})"
-                    >
+                        onclick="cnt(${index})"
+                        class="tasbeeh-btn">
 
                         <span
                             class="count-num"
-                            id="count-val-${index}"
-                        >
+                            id="count-val-${index}">
                             ${zekr.count}
                         </span>
 
@@ -686,51 +1198,78 @@ async function loadAzkarData(category, title) {
 
             `;
 
+
             container.appendChild(card);
 
         });
 
+
+        document
+            .getElementById(
+                "azkar-index-view"
+            )
+            .classList.add("hidden");
+
+
+        document
+            .getElementById(
+                "azkar-list-view"
+            )
+            .classList.remove("hidden");
+
+
+        window.scrollTo(0, 0);
+
     } catch (error) {
 
-        container.innerHTML =
-            `<div class="error-box">
-                ❌ ${escapeHtml(error.message)}
-            </div>`;
+        alert(
+            "❌ حدث خطأ أثناء تحميل الأذكار"
+        );
 
+        throw error;
     }
 
 }
 
 
-function cnt(index, originalCount) {
+/* =========================================
+   عداد الأذكار
+========================================= */
+
+function cnt(index) {
 
     const number =
-        document.getElementById(`count-val-${index}`);
+        document.getElementById(
+            `count-val-${index}`
+        );
+
 
     const button =
-        document.getElementById(`counter-btn-${index}`);
+        document.getElementById(
+            `counter-btn-${index}`
+        );
+
 
     let value =
-        parseInt(number.dataset.remaining || number.innerText);
-
-    if (isNaN(value))
-        value = originalCount;
+        parseInt(number.innerText);
 
 
     if (value > 0) {
 
         value--;
 
-        number.dataset.remaining = value;
-
-        number.innerText = value;
+        number.innerText =
+            value;
 
 
         if (value === 0) {
 
-            number.innerText = "✓";
+            number.innerText =
+                "✓";
 
-            button.classList.add("completed-counter");
+            button.classList.add(
+                "completed-counter"
+            );
 
         }
 
@@ -739,44 +1278,24 @@ function cnt(index, originalCount) {
 }
 
 
+/* =========================================
+   الرجوع للأذكار
+========================================= */
+
 function backToAzkarIndex() {
 
-    document.getElementById("azkar-list-view")
+    document
+        .getElementById(
+            "azkar-list-view"
+        )
         .classList.add("hidden");
 
-    document.getElementById("azkar-index-view")
+
+    document
+        .getElementById(
+            "azkar-index-view"
+        )
         .classList.remove("hidden");
-
-}
-
-
-/* ================= حماية النص ================= */
-
-function escapeHtml(text) {
-
-    return String(text)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
-
-function escapeAttribute(text) {
-
-    return String(text)
-        .replaceAll("\\", "\\\\")
-        .replaceAll("'", "\\'");
-}
-
-
-function toArabicNumber(number) {
-
-    const arabic = "٠١٢٣٤٥٦٧٨٩";
-
-    return String(number)
-        .replace(/[0-9]/g, digit => arabic[digit]);
 
 }
 
