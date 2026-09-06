@@ -3,58 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>المصحف الإلكتروني الفخم والأذكار</title>
+    <title>المصحف الشريف</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cloudflare.com">
-    <script>
-        window.onerror = function(msg, url, line) { alert("🚨 مصيدة الأخطاء:\n" + msg + "\nفي السطر: " + line); return false; };
-    </script>
+    <script>window.onerror = function(m, u, l) { alert("🚨 مصيدة الأخطاء:\n" + m + "\nفي السطر: " + l); return false; };</script>
 </head>
 <body>
     <div class="app-container">
         <header class="app-header">
             <div class="logo-area"><i class="fas fa-quran animated-quran"></i><h1>المُصْحَفُ الشَّرِيفُ</h1></div>
-            <p class="subtitle">تصفح مرن بسحب الشاشة لليسار • أذكار كاملة بالعداد التفاعلي</p>
+            <p class="subtitle">اسحب الشاشة لليسار للتصفح • أذكار كاملة بالعداد</p>
             <div class="main-tabs">
-                <button onclick="switchTab('quran')" id="tab-quran" class="tab-btn active-tab"><i class="fas fa-book-open"></i> فهرس السور</button>
-                <button onclick="switchTab('azkar')" id="tab-azkar" class="tab-btn"><i class="fas fa-pray"></i> الأذكار والتحصين</button>
+                <button onclick="switchTab('quran')" id="tab-quran" class="tab-btn active-tab">فهرس السور</button>
+                <button onclick="switchTab('azkar')" id="tab-azkar" class="tab-btn">الأذكار والتحصين</button>
             </div>
         </header>
 
-        <!-- قسم القرآن التفاعلي الحريري -->
         <div id="quran-section" class="tab-content">
             <div id="surahs-index-view">
                 <h3 class="section-title">فهرس سور القرآن الكريم:</h3>
                 <div class="surahs-grid" id="surahs-container"></div>
             </div>
-            
-            <!-- شاشة عرض الصفحات الأصلية بسحب اللمس لليسار -->
             <div id="surah-reading-view" class="hidden">
                 <div class="navigation-bar">
                     <button onclick="backToSurahsIndex()" class="back-btn"><i class="fas fa-arrow-right"></i> الفهرس</button>
-                    <h3 id="current-surah-title" class="surah-header-title">سورة</h3>
-                    <span id="page-number-indicator" class="page-indicator-badge">صفحة 1</span>
+                    <h3 id="current-surah-title" class="surah-header-title"></h3>
+                    <span id="page-number-indicator" class="page-indicator-badge"></span>
                 </div>
-                
-                <!-- منطقة السحب الحركي باللمس لليسار واليمين سلسة جداً -->
                 <div class="quran-swiper-container" id="swiper-box">
-                    <div class="swiper-wrapper-page" id="quran-page-holder">
-                        <img id="quran-page-img" src="" alt="صفحة المصحف الشريف">
-                    </div>
-                    <!-- أزرار تنقل جانبية احتياطية للموبايل والويب -->
+                    <div class="swiper-wrapper-page" id="quran-page-holder"><img id="quran-page-img" src=""></div>
                     <button onclick="nextPage()" class="nav-arrow-btn left-arrow"><i class="fas fa-chevron-left"></i></button>
                     <button onclick="prevPage()" class="nav-arrow-btn right-arrow"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
 
-        <!-- قسم الأذكار والمسبحة -->
         <div id="azkar-section" class="tab-content hidden">
             <div id="azkar-index-view">
-                <h3 class="section-title">أذكار الحفظ والتحصين اليومي المكتملة:</h3>
+                <h3 class="section-title">الأذكار اليومية:</h3>
                 <div class="azkar-categories-grid">
-                    <div class="azkar-card category-sabah" onclick="loadAzkarData('sabah', 'أذكار الصباح كاملة ☀️')"><i class="fas fa-sun"></i><h3>أذكار الصباح كاملة</h3></div>
-                    <div class="azkar-card category-masaa" onclick="loadAzkarData('masaa', 'أذكار المساء كاملة 🌙')"><i class="fas fa-moon"></i><h3>أذكار المساء كاملة</h3></div>
+                    <div class="azkar-card category-sabah" onclick="loadAzkarData('sabah', 'أذكار الصباح ☀️')"><i class="fas fa-sun"></i><h3>أذكار الصباح كاملة</h3></div>
+                    <div class="azkar-card category-masaa" onclick="loadAzkarData('masaa', 'أذكار المساء 🌙')"><i class="fas fa-moon"></i><h3>أذكار المساء كاملة</h3></div>
                 </div>
             </div>
             <div id="azkar-list-view" class="hidden">
@@ -66,10 +55,9 @@
 
     <script>
         const SERVER_URL = window.location.protocol + "//" + window.location.host;
-        let startPageNum = 1, endPageNum = 1, currentPageNum = 1;
-        let touchStartX = 0, touchEndX = 0;
+        let startPage = 1, endPage = 1, curPage = 1, touchX = 0;
 
-        window.onload = function() { loadSurahsIndex(); initSwipeDetection(); };
+        window.onload = function() { loadSurahsIndex(); document.getElementById('swiper-box').addEventListener('touchstart', e => { touchX = e.changedTouches[0].screenX; }, {passive:true}); document.getElementById('swiper-box').addEventListener('touchend', e => { let diff = touchX - e.changedTouches[0].screenX; if(diff > 50) nextPage(); if(diff < -50) prevPage(); }, {passive:true}); };
 
         function switchTab(t) {
             document.getElementById('quran-section').classList.add('hidden'); document.getElementById('azkar-section').classList.add('hidden');
@@ -80,80 +68,40 @@
 
         async function loadSurahsIndex() {
             try {
-                const r = await fetch(`${SERVER_URL}/api/surahs`), s = await r.json(), container = document.getElementById('surahs-container'); container.innerHTML = "";
-                s.forEach(surah => {
-                    const card = document.createElement('div'); card.className = "surah-item-card"; 
-                    card.onclick = () => startReadingSurah(surah.name, surval = surah.start_page, surah.end_page);
-                    card.innerHTML = `<div class="surah-meta"><span class="surah-number">${surah.id}</span><div class="surah-name-box"><h3>سُورَةُ ${surah.name}</h3><p>${surah.type} • تبدأ من صفحة ${surah.start_page}</p></div></div><i class="fas fa-chevron-left gold-arrow"></i>`; container.appendChild(card);
+                const r = await fetch(`${SERVER_URL}/api/surahs`), s = await r.json(), c = document.getElementById('surahs-container'); c.innerHTML = "";
+                s.forEach(su => {
+                    const d = document.createElement('div'); d.className = "surah-item-card"; d.onclick = () => { startPage = su.start_page; endPage = su.end_page; curPage = su.start_page; document.getElementById('current-surah-title').innerText = "سُورَةُ " + su.name; renderPage(); document.getElementById('surahs-index-view').classList.add('hidden'); document.getElementById('surah-reading-view').classList.remove('hidden'); window.scrollTo(0,0); };
+                    d.innerHTML = `<div class="surah-meta"><span class="surah-number">${su.id}</span><div class="surah-name-box"><h3>سُورَةُ ${su.name}</h3><p>${su.type} • صفحة ${su.start_page}</p></div></div><i class="fas fa-chevron-left gold-arrow"></i>`; c.appendChild(d);
                 });
-            } catch (e) { alert("خطأ بالفهرس"); }
+            } catch(e){}
         }
 
-        function startReadingSurah(name, start, end) {
-            startPageNum = start; endPageNum = end; currentPageNum = start;
-            document.getElementById('current-surah-title').innerText = "سُورَةُ " + name;
-            renderQuranPage();
-            document.getElementById('surahs-index-view').classList.add('hidden'); document.getElementById('surah-reading-view').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        function renderPage() {
+            let p = String(curPage).padStart(3, '0'); document.getElementById('quran-page-img').src = `https://amazonaws.com{p}.png`;
+            document.getElementById('page-number-indicator').innerText = "صفحة " + curPage;
+            if(curPage < endPage) { let n = String(curPage+1).padStart(3, '0'); new Image().src = `https://amazonaws.com{n}.png`; }
         }
-
-        // دالة عرض الصفحة المصورة الفخمة مع تفعيل ميزة التحميل المسبق فائقة السلاسة
-        function renderQuranPage() {
-            // نقوم بجلب الصفحة المصورة الرسمية للمصحف الشريف بجودة عالية جداً وثابتة طيران
-            // نستخدم السيرفر العالمي المفتوح لصفحات المصحف لضمان النقاء المطلق والسرعة
-            let paddedPage = String(currentPageNum).padStart(3, '0');
-            const imgElement = document.getElementById('quran-page-img');
-            imgElement.src = `https://amazonaws.com{paddedPage}.png`;
-            document.getElementById('page-number-indicator').innerText = "صفحة " + currentPageNum;
-            
-            // تحميل مسبق خفي (Preloading) للصفحة التالية لكي تقلب لليسار كالحرير بدون ثانية واحدة انتظار!
-            if(currentPageNum < endPageNum) {
-                let nextPadded = String(currentPageNum + 1).padStart(3, '0');
-                const imgPreload = new Image();
-                imgPreload.src = `https://amazonaws.com{nextPadded}.png`;
-            }
-        }
-
-        function nextPage() { if(currentPageNum < endPageNum) { currentPageNum++; renderQuranPage(); triggerFlipAnimation(); } }
-        function prevPage() { if(currentPageNum > startPageNum) { currentPageNum--; renderQuranPage(); triggerFlipAnimation(); } }
-
-        // أنيميشن ناعم جداً وسلس كالحرير عند انزلاق الصفحات
-        function triggerFlipAnimation() {
-            const holder = document.getElementById('quran-page-holder');
-            holder.style.opacity = "0.4"; holder.style.transform = "translateX(-15px)";
-            setTimeout(() => { holder.style.opacity = "1"; holder.style.transform = "translateX(0)"; }, 120);
-        }
-
-        // 🎯 برمجة نظام الاستشعار باللمس والسحب لليسار فائق السلاسة (Fluid Touch Swipe)
-        function initSwipeDetection() {
-            const box = document.getElementById('swiper-box');
-            box.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
-            box.addEventListener('touchend', e => { 
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipeGesture();
-            }, {passive: true});
-        }
-
-        function handleSwipeGesture() {
-            // سحب لليسار (تعني الصفحة التالية في المصاحف)
-            if (touchStartX - touchEndX > 50) nextPage();
-            // سحب لليمين (تعني الصفحة السابقة)
-            if (touchEndX - touchStartX > 50) prevPage();
-        }
-
+        function nextPage() { if(curPage < endPage) { curPage++; renderPage(); flipAnim(); } }
+        function prevPage() { if(curPage > startPage) { curPage--; renderPage(); flipAnim(); } }
+        function flipAnim() { const h = document.getElementById('quran-page-holder'); h.style.opacity = "0.4"; setTimeout(() => h.style.opacity = "1", 100); }
         function backToSurahsIndex() { document.getElementById('surah-reading-view').classList.add('hidden'); document.getElementById('surahs-index-view').classList.remove('hidden'); }
 
         async function loadAzkarData(cat, title) {
             try {
                 document.getElementById('current-azkar-title').innerText = title;
-                const r = await fetch(`${SERVER_URL}/api/azkar?category=${cat}`), az = await r.json(), container = document.getElementById('azkar-container'); container.innerHTML = "";
+                const r = await fetch(`${SERVER_URL}/api/azkar?category=${cat}`), az = await r.json(), c = document.getElementById('azkar-container'); c.innerHTML = "";
                 az.forEach((a, i) => {
-                    const card = document.createElement('div'); card.className = "zekr-box-card";
-                    card.innerHTML = `<p class="zekr-text">${a.text}</p><div class="counter-area"><button id="counter-btn-${i}" onclick="decreaseCounter(${i})" class="tasbeeh-btn"><span class="count-num" id="count-val-${i}">${a.count}</span><span class="count-lbl">تكرار</span></button></div>`; container.appendChild(card);
+                    const d = document.createElement('div'); d.className = "zekr-box-card";
+                    d.innerHTML = `<p class="zekr-text">${a.text}</p><div class="counter-area"><button id="counter-btn-${i}" onclick="cnt(${i})" class="tasbeeh-btn"><span class="count-num" id="count-val-${i}">${a.count}</span><span class="count-lbl">تكرار</span></button></div>`; c.appendChild(d);
                 });
-                document.getElementById('azkar-index-view').classList.add('hidden'); document.getElementById('azkar-list-view').classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' });
-            } catch (e) { alert("خطأ بالأذكار"); }
+                document.getElementById('azkar-index-view').classList.add('hidden'); document.getElementById('azkar-list-view').classList.remove('hidden'); window.scrollTo(0,0);
+            } catch(e){}
         }
-
-        function decreaseCounter(i) {
-
+        function cnt(i) {
+            const n = document.getElementById(`count-val-${i}`), b = document.getElementById(`counter-btn-${i}`); let v = parseInt(n.innerText);
+            if (v > 0) { v--; n.innerText = v; if (v === 0) { b.classList.add('completed-counter'); n.innerText = "✓"; } }
+        }
+        function backToAzkarIndex() { document.getElementById('azkar-list-view').classList.add('hidden'); document.getElementById('azkar-index-view').classList.remove('hidden'); }
+    </script>
+</body>
+</html>
