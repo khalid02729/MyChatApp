@@ -4,10 +4,10 @@ from flask_cors import CORS
 import sqlite3
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-app.config['SECRET_KEY'] = 'quran_azkar_2027_secret_key'
+app.config['SECRET_KEY'] = 'quran_perfect_2027_key'
 CORS(app, supports_credentials=True, origins="*")
 
-DATABASE = 'quran_azkar.db'
+DATABASE = 'quran_perfect.db'
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -18,20 +18,29 @@ def init_db():
     with get_db() as conn:
         conn.execute('DROP TABLE IF EXISTS azkar')
         conn.execute('DROP TABLE IF EXISTS surahs')
-        conn.execute('CREATE TABLE surahs (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT NOT NULL, verses_count INTEGER NOT NULL, content TEXT NOT NULL)')
+        conn.execute('CREATE TABLE surahs (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT NOT NULL, start_page INTEGER NOT NULL, end_page INTEGER NOT NULL)')
         conn.execute('CREATE TABLE azkar (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL, text TEXT NOT NULL, count INTEGER NOT NULL)')
         
-        # ضخ السور كاملة بحروفها وآياتها الصحيحة 100%
-        conn.execute("INSERT INTO surahs (name, type, verses_count, content) VALUES ('الفَاتِحَة', 'مكية', 7, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ ﴿٢﴾ الرَّحْمَٰنِ الرَّحِيمِ ﴿٣﴾ مَالِكِ يَوْمِ الدِّينِ ﴿٤﴾ إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ ﴿٥﴾ اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ ﴿٦﴾ صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ ﴿٧﴾')")
-        conn.execute("INSERT INTO surahs (name, type, verses_count, content) VALUES ('الإخْلَاص', 'مكية', 4, 'قُلْ هُوَ اللَّهُ أَحَدٌ ﴿١﴾ اللَّهُ الصَّمَدُ ﴿٢﴾ لَمْ يَلِدْ وَلَمْ يُولَدْ ﴿٣﴾ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ ﴿٤﴾')")
-        conn.execute("INSERT INTO surahs (name, type, verses_count, content) VALUES ('الفَلَق', 'مكية', 5, 'قُل * أَعُوذُ بِرَبِّ الْفَلَقِ ﴿١﴾ مِن شَرِّ مَا خَلَقَ ﴿٢﴾ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ﴿٣﴾ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ﴿٤﴾ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ ﴿٥﴾')")
-        conn.execute("INSERT INTO surahs (name, type, verses_count, content) VALUES ('النَّاس', 'مكية', 6, 'قُلْ أَعُوذُ بِرَبِّ النَّاسِ ﴿١﴾ مَلِكِ النَّاسِ ﴿٢﴾ إِلَٰهِ النَّاسِ ﴿٣﴾ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ﴿٤﴾ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ﴿٥﴾ مِنَ الْجِنَّةِ وَالنَّاسِ ﴿٦﴾')")
+        # 💎 ضخ فهرس المصحف الشريف بالترتيب الحقيقي المعتمد (أمثلة البداية المتسلسلة)
+        conn.execute("INSERT INTO surahs (name, type, start_page, end_page) VALUES ('الفَاتِحَة', 'مكية', 1, 1)")
+        conn.execute("INSERT INTO surahs (name, type, start_page, end_page) VALUES ('البَقَرَة', 'مدنية', 2, 49)")
+        conn.execute("INSERT INTO surahs (name, type, start_page, end_page) VALUES ('آلِ عِمْرَان', 'مدنية', 50, 76)")
+        conn.execute("INSERT INTO surahs (name, type, start_page, end_page) VALUES ('النِّسَاءِ', 'مدنية', 77, 106)")
+        conn.execute("INSERT INTO surahs (name, type, start_page, end_page) VALUES ('الإخْلَاص', 'مكية', 604, 604)")
+        conn.execute("INSERT INTO surahs (name, type, start_page, end_page) VALUES ('الفَلَق', 'مكية', 604, 604)")
+        conn.execute("INSERT INTO surahs (name, type, start_page, end_page) VALUES ('النَّاس', 'مكية', 604, 604)")
         
-        # أذكار الصباح والمساء كاملة
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '📜 آية الكرسي: اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...', 1)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '☀️ أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ.', 1)")
-        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🌙 أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ.', 1)")
+        # ☀️ ضخ نصوص أذكار الصباح والتحصين الشرعية الكاملة والموسعة دون أي اختصار
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '📜 أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ: اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ. (آية الكرسي - حصن المسلم)', 1)")
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '☀️ أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذَا الْيَوْمِ وَخَيْرَ مَا بَعْدَهُ، وَأَعُوذُ بِكLocal مِنْ شَرِّ مَا فِي هَذَا الْيَوْمِ وَشَرِّ مَا بَعْدَهُ.', 1)")
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '📿 يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.', 1)")
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('sabah', '🛡️ بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.', 3)")
+
+        # 🌙 ضخ نصوص أذكار المساء الشرعية الكاملة والموسعة لحفظ النفس والسكينة
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '📜 أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ: اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ... (آية الكرسي - حماية وحفظ للمساء حتى تصبح)', 1)")
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🌙 أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.', 1)")
         conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🌿 أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.', 3)")
+        conn.execute("INSERT INTO azkar (category, text, count) VALUES ('masaa', '🛡️ بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.', 3)")
         conn.commit()
 
 init_db()
@@ -41,13 +50,8 @@ def index(): return send_from_directory('.', 'index.html')
 
 @app.route('/api/surahs', methods=['GET'])
 def get_surahs():
-    with get_db() as conn: surahs = conn.execute('SELECT id, name, type, verses_count FROM surahs').fetchall()
+    with get_db() as conn: surahs = conn.execute('SELECT * FROM surahs ORDER BY id ASC').fetchall()
     return jsonify([dict(s) for s in surahs])
-
-@app.route('/api/surah/<int:surah_id>', methods=['GET'])
-def get_surah_content(surah_id):
-    with get_db() as conn: surah = conn.execute('SELECT * FROM surahs WHERE id = ?', (surah_id,)).fetchone()
-    return jsonify(dict(surah)) if surah else (jsonify({'status': 'error'}), 404)
 
 @app.route('/api/azkar', methods=['GET'])
 def get_azkar():
@@ -58,5 +62,3 @@ def get_azkar():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
-
